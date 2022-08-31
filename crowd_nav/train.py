@@ -9,6 +9,7 @@ import gym
 import copy
 import git
 import re
+import wandb
 from tensorboardX import SummaryWriter
 from crowd_sim.envs.utils.robot import Robot
 from crowd_nav.utils.trainer import VNRLTrainer, MPRLTrainer
@@ -29,6 +30,9 @@ def set_random_seeds(seed):
 def main(args):
     set_random_seeds(args.randomseed)
     # configure paths
+    if args.wandb:
+        wandb.init(project='GraphRL', entity="baron", config=args)
+
     make_new_dir = True
     if os.path.exists(args.output_dir):
         if args.overwrite:
@@ -43,20 +47,6 @@ def main(args):
         os.makedirs(args.output_dir)
         shutil.copy(args.config, os.path.join(args.output_dir, 'config.py'))
 
-        # # insert the arguments from command line to the config file
-        # with open(os.path.join(args.output_dir, 'config.py'), 'r') as fo:
-        #     config_text = fo.read()
-        # search_pairs = {r"gcn.X_dim = \d*": "gcn.X_dim = {}".format(args.X_dim),
-        #                 r"gcn.num_layer = \d": "gcn.num_layer = {}".format(args.layers),
-        #                 r"gcn.similarity_function = '\w*'": "gcn.similarity_function = '{}'".format(args.sim_func),
-        #                 r"gcn.layerwise_graph = \w*": "gcn.layerwise_graph = {}".format(args.layerwise_graph),
-        #                 r"gcn.skip_connection = \w*": "gcn.skip_connection = {}".format(args.skip_connection)}
-        #
-        # for find, replace in search_pairs.items():
-        #     config_text = re.sub(find, replace, config_text)
-        #
-        # with open(os.path.join(args.output_dir, 'config.py'), 'w') as fo:
-        #     fo.write(config_text)
 
     args.config = os.path.join(args.output_dir, 'config.py')
     log_file = os.path.join(args.output_dir, 'output.log')
@@ -229,26 +219,19 @@ def main(args):
         logging.info('Save the best val model with the reward: {}'.format(best_val_reward))
     explorer.run_k_episodes(env.case_size['test'], 'test', episode=episode, print_failure=True)
 
+    if args.wandb:
+        wandb.finish()
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser('Parse configuration file')
     parser.add_argument('--policy', type=str, default='model_predictive_rl')
-    parser.add_argument('--config', type=str, default='configs/icra_benchmark/mp_separate.py')
     parser.add_argument('--output_dir', type=str, default='data/output')
     parser.add_argument('--overwrite', default=False, action='store_true')
-    parser.add_argument('--weights', type=str)
-    parser.add_argument('--resume', default=False, action='store_true')
     parser.add_argument('--gpu', default=False, action='store_true')
     parser.add_argument('--debug', default=False, action='store_true')
-    parser.add_argument('--test_after_every_eval', default=False, action='store_true')
     parser.add_argument('--randomseed', type=int, default=17)
-
-    # arguments for GCN
-    # parser.add_argument('--X_dim', type=int, default=32)
-    # parser.add_argument('--layers', type=int, default=2)
-    # parser.add_argument('--sim_func', type=str, default='embedded_gaussian')
-    # parser.add_argument('--layerwise_graph', default=False, action='store_true')
-    # parser.add_argument('--skip_connection', default=True, action='store_true')
+    parser.add_argument('--wandb', default=True, action='store_true')
 
     sys_args = parser.parse_args()
 
