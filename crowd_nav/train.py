@@ -1,18 +1,14 @@
-import sys
-import logging
 import argparse
 import os
 import shutil
-import importlib.util
+# import importlib.util
 import torch
 import gym
 import copy
-import git
-import re
 import wandb
-from tensorboardX import SummaryWriter
+from configs import config, logger
 from crowd_sim.envs.utils.robot import Robot
-from crowd_nav.utils.trainer import VNRLTrainer, MPRLTrainer
+from crowd_nav.utils.trainer import MPRLTrainer
 from crowd_nav.utils.memory import ReplayMemory
 from crowd_nav.utils.explorer import Explorer
 from crowd_nav.policy.policy_factory import policy_factory
@@ -30,8 +26,10 @@ def set_random_seeds(seed):
 def main(args):
     set_random_seeds(args.randomseed)
     # configure paths
+    writer = None
     if args.wandb:
         wandb.init(project='GraphRL', entity="baron", config=args)
+        writer = wandb()
 
     make_new_dir = True
     if os.path.exists(args.output_dir):
@@ -53,25 +51,16 @@ def main(args):
     il_weight_file = os.path.join(args.output_dir, 'il_model.pth')
     rl_weight_file = os.path.join(args.output_dir, 'rl_model.pth')
 
-    spec = importlib.util.spec_from_file_location('config', args.config)
-    if spec is None:
-        parser.error('Config file not found.')
-    config = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(config)
+    # spec = importlib.util.spec_from_file_location('config', args.config)
+    # if spec is None:
+    #     parser.error('Config file not found.')
+    # config = importlib.util.module_from_spec(spec)
+    # spec.loader.exec_module(config)
 
     # configure logging
-    mode = 'a' if args.resume else 'w'
-    file_handler = logging.FileHandler(log_file, mode=mode)
-    stdout_handler = logging.StreamHandler(sys.stdout)
-    level = logging.INFO if not args.debug else logging.DEBUG
-    logging.basicConfig(level=level, handlers=[stdout_handler, file_handler],
-                        format='%(asctime)s, %(levelname)s: %(message)s', datefmt="%Y-%m-%d %H:%M:%S")
-    repo = git.Repo(search_parent_directories=True)
-    logging.info('Current git head hash code: {}'.format(repo.head.object.hexsha))
-    logging.info('Current config content is :{}'.format(config))
+    logging = logger.log_setting(args, log_file)
     device = torch.device("cuda:0" if torch.cuda.is_available() and args.gpu else "cpu")
     logging.info('Using device: %s', device)
-    writer = SummaryWriter(log_dir=args.output_dir)
 
     # configure policy
     policy_config = config.PolicyConfig()
@@ -114,8 +103,8 @@ def main(args):
                               freeze_state_predictor=train_config.train.freeze_state_predictor,
                               detach_state_predictor=train_config.train.detach_state_predictor,
                               share_graph_model=policy_config.model_predictive_rl.share_graph_model)
-    else:
-        trainer = VNRLTrainer(model, memory, device, policy, batch_size, optimizer, writer)
+    # else:
+    #     trainer = VNRLTrainer(model, memory, device, policy, batch_size, optimizer, writer)
     explorer = Explorer(env, robot, device, writer, memory, policy.gamma, target_policy=policy)
 
     # imitation learning
