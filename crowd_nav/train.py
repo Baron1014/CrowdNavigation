@@ -1,12 +1,14 @@
 import argparse
 import os
 import shutil
-# import importlib.util
+import logging
+import importlib.util
 import torch
 import gym
 import copy
 import wandb
-from configs import config, logger
+from configs import logger
+from configs import config as global_config
 from crowd_sim.envs.utils.robot import Robot
 from crowd_nav.utils.trainer import MPRLTrainer
 from crowd_nav.utils.memory import ReplayMemory
@@ -27,8 +29,9 @@ def main(args):
     set_random_seeds(args.randomseed)
     # configure paths
     writer = None
+    train_cg = global_config.BaseTrainConfig()
     if args.wandb:
-        wandb.init(project='GraphRL', entity="baron", config=args)
+        wandb.init(project=train_cg.wan.project, entity=train_cg.wan.name, config=args)
         writer = wandb()
 
     make_new_dir = True
@@ -51,14 +54,14 @@ def main(args):
     il_weight_file = os.path.join(args.output_dir, 'il_model.pth')
     rl_weight_file = os.path.join(args.output_dir, 'rl_model.pth')
 
-    # spec = importlib.util.spec_from_file_location('config', args.config)
-    # if spec is None:
-    #     parser.error('Config file not found.')
-    # config = importlib.util.module_from_spec(spec)
-    # spec.loader.exec_module(config)
+    spec = importlib.util.spec_from_file_location('config', args.config)
+    if spec is None:
+        parser.error('Config file not found.')
+    config = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(config)
 
     # configure logging
-    logging = logger.log_setting(args, log_file)
+    logger.log_setting(args, log_file)
     device = torch.device("cuda:0" if torch.cuda.is_available() and args.gpu else "cpu")
     logging.info('Using device: %s', device)
 
@@ -157,11 +160,8 @@ def main(args):
     if episode % evaluation_interval == 0:
         logging.info('Evaluate the model instantly after imitation learning on the validation cases')
         explorer.run_k_episodes(env.case_size['val'], 'val', episode=episode)
-        explorer.log('val', episode // evaluation_interval)
-
-        if args.test_after_every_eval:
-            explorer.run_k_episodes(env.case_size['test'], 'test', episode=episode, print_failure=True)
-            explorer.log('test', episode // evaluation_interval)
+        if writer!=None:
+            explorer.log('val', episode // evaluation_interval)
 
     episode = 0
     while episode < train_episodes:
@@ -176,7 +176,8 @@ def main(args):
 
         # sample k episodes into memory and optimize over the generated memory
         explorer.run_k_episodes(sample_episodes, 'train', update_memory=True, episode=episode)
-        explorer.log('train', episode)
+        if writer!=None:
+            explorer.log('train', episode)
 
         trainer.optimize_batch(train_batches, episode)
         episode += 1
@@ -191,10 +192,6 @@ def main(args):
             if episode % checkpoint_interval == 0 and reward > best_val_reward:
                 best_val_reward = reward
                 best_val_model = copy.deepcopy(policy.get_state_dict())
-        # test after every evaluation to check how the generalization performance evolves
-            if args.test_after_every_eval:
-                explorer.run_k_episodes(env.case_size['test'], 'test', episode=episode, print_failure=True)
-                explorer.log('test', episode // evaluation_interval)
 
         if episode != 0 and episode % checkpoint_interval == 0:
             current_checkpoint = episode // checkpoint_interval - 1
@@ -217,10 +214,12 @@ if __name__ == '__main__':
     parser.add_argument('--policy', type=str, default='model_predictive_rl')
     parser.add_argument('--output_dir', type=str, default='data/output')
     parser.add_argument('--overwrite', default=False, action='store_true')
+    parser.add_argument('--resume', default=False, action='store_true')
     parser.add_argument('--gpu', default=False, action='store_true')
     parser.add_argument('--debug', default=False, action='store_true')
     parser.add_argument('--randomseed', type=int, default=17)
-    parser.add_argument('--wandb', default=True, action='store_true')
+    parser.add_argument('--wandb', default=False, action='store_true')
+    parser.add_argument('--config', type=str, default='configs/gcn.py')
 
     sys_args = parser.parse_args()
 

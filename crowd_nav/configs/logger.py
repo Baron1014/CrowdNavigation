@@ -11,4 +11,4 @@ def log_setting(args, log_file):
                         format='%(asctime)s, %(levelname)s: %(message)s', datefmt="%Y-%m-%d %H:%M:%S")
     logging.info('Current config content is :{}'.format(config))
 
-    return logging
+    

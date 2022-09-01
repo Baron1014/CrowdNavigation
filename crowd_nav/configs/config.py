@@ -157,6 +157,10 @@ class BaseTrainConfig(object):
 
     train.train_with_pretend_batch = False
 
+    wan = Config()
+    wan.entity = "baron"
+    wan.project = "GraphRL"
+
     def __init__(self, debug=False):
         if debug:
             self.imitation_learning.il_episodes = 10
