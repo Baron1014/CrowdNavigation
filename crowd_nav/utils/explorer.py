@@ -141,11 +141,11 @@ class Explorer(object):
 
     def log(self, tag_prefix, global_step):
         sr, cr, time, reward, avg_return = self.statistics
-        self.writer.add_scalar(tag_prefix + '/success_rate', sr, global_step)
-        self.writer.add_scalar(tag_prefix + '/collision_rate', cr, global_step)
-        self.writer.add_scalar(tag_prefix + '/time', time, global_step)
-        self.writer.add_scalar(tag_prefix + '/reward', reward, global_step)
-        self.writer.add_scalar(tag_prefix + '/avg_return', avg_return, global_step)
+        self.writer.log({tag_prefix + '/success_rate': sr}, step=global_step)
+        self.writer.log({tag_prefix + '/collision_rate': cr}, step=global_step)
+        self.writer.log({tag_prefix + '/time': time}, step=global_step)
+        self.writer.log({tag_prefix + '/reward': reward}, step=global_step)
+        self.writer.log({tag_prefix + '/avg_return': avg_return}, step=global_step)
 
 
 def average(input_list):

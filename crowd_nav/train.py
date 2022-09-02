@@ -31,8 +31,8 @@ def main(args):
     writer = None
     train_cg = global_config.BaseTrainConfig()
     if args.wandb:
-        wandb.init(project=train_cg.wan.project, entity=train_cg.wan.name, config=args)
-        writer = wandb()
+        wandb.init(project=train_cg.wan.project, entity=train_cg.wan.entity, config=args)
+        writer = wandb
 
     make_new_dir = True
     if os.path.exists(args.output_dir):

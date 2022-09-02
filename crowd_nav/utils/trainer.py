@@ -100,8 +100,9 @@ class MPRLTrainer(object):
                     update_counter += 1
 
             logging.debug('{}-th epoch ends'.format(epoch))
-            self.writer.add_scalar('IL/epoch_v_loss', epoch_v_loss / len(self.memory), epoch)
-            self.writer.add_scalar('IL/epoch_s_loss', epoch_s_loss / len(self.memory), epoch)
+            if self.writer != None:
+                self.writer.log({'IL/epoch_v_loss': epoch_v_loss / len(self.memory)}, step=epoch)
+                self.writer.log({'IL/epoch_s_loss': epoch_s_loss / len(self.memory)}, step=epoch)
             logging.info('Average loss in epoch %d: %.2E, %.2E', epoch, epoch_v_loss / len(self.memory),
                          epoch_s_loss / len(self.memory))
 
@@ -155,8 +156,9 @@ class MPRLTrainer(object):
         average_v_loss = v_losses / num_batches
         average_s_loss = s_losses / num_batches
         logging.info('Average loss : %.2E, %.2E', average_v_loss, average_s_loss)
-        self.writer.add_scalar('RL/average_v_loss', average_v_loss, episode)
-        self.writer.add_scalar('RL/average_s_loss', average_s_loss, episode)
+        if self.writer != None:
+            self.writer.log({'RL/average_v_loss': average_v_loss}, step=episode)
+            self.writer.log({'RL/average_s_loss': average_s_loss}, step=episode)
 
         return average_v_loss, average_s_loss
 
