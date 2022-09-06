@@ -8,6 +8,7 @@ class Human(Agent):
         self.id = None
         self.interaction = None
         self.static = static
+        self.radius = getattr(config, section).radius
 
     def act(self, ob):
         """

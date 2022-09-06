@@ -15,7 +15,6 @@ class Agent(object):
         """
         self.visible = getattr(config, section).visible
         self.v_pref = getattr(config, section).v_pref
-        self.radius = getattr(config, section).radius
         self.policy = policy_factory[getattr(config, section).policy]()
         self.sensor = getattr(config, section).sensor
         self.kinematics = self.policy.kinematics if self.policy is not None else None

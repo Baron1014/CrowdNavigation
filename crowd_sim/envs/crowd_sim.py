@@ -166,8 +166,12 @@ class CrowdSim(gym.Env):
             px = np.random.random() * self.square_width * 0.5 * sign
             py = (np.random.random() - 0.5) * self.square_width
             collide = False
-            for agent in [self.robot] + self.humans:
-                if norm((px - agent.px, py - agent.py)) < human.radius + agent.radius + self.discomfort_dist:
+            for i, agent in enumerate([self.robot] + self.humans):
+                if i == 0:
+                    agent_dist = (self.robot.width**2+self.robot.length**2)**0.5
+                else:
+                    agent_dist = agent.radius
+                if norm((px - agent.px, py - agent.py)) < human.radius + agent_dist + self.discomfort_dist:
                     collide = True
                     break
             if not collide:
@@ -177,8 +181,12 @@ class CrowdSim(gym.Env):
             gy = np.random.random() * self.square_width 
             collide = False
             stay = False
-            for agent in [self.robot] + self.humans:
-                if norm((gx - agent.gx, gy - agent.gy)) < human.radius + agent.radius + self.discomfort_dist:
+            for i, agent in enumerate([self.robot] + self.humans):
+                if i == 0:
+                    agent_dist = (self.robot.width**2+self.robot.length**2)**0.5
+                else:
+                    agent_dist = agent.radius
+                if norm((gx - agent.gx, gy - agent.gy)) < human.radius + agent_dist + self.discomfort_dist:
                     collide = True
                     break
                 width = abs(self.square_width*0.5)
@@ -203,8 +211,12 @@ class CrowdSim(gym.Env):
             px = np.random.random() * self.square_width * 0.4 * sign
             py = (np.random.random() + 0.1) * self.square_width * 0.3
             collide = False
-            for agent in [self.robot] + self.humans:
-                if norm((px - agent.px, py - agent.py)) < human.radius + agent.radius + self.discomfort_dist:
+            for i, agent in enumerate([self.robot] + self.humans):
+                if i == 0:
+                    agent_dist = (self.robot.width**2+self.robot.length**2)**0.5
+                else:
+                    agent_dist = agent.radius
+                if norm((px - agent.px, py - agent.py)) < human.radius + agent_dist + self.discomfort_dist:
                     collide = True
                     break
             robot_goal = [self.robot.gx, self.robot.gy]
@@ -333,19 +345,23 @@ class CrowdSim(gym.Env):
         while True:
             px = random.random() * self.square_width * 0.25 * sign
             py = (random.random() - 0.5) * self.square_width * 0.1
-            min_path_dist = human1.radius + human2.radius  + self.robot.radius + self.discomfort_dist
+            min_path_dist = human1.radius + human2.radius  + (self.robot.width**2+self.robot.length**2)**0.5 + self.discomfort_dist
             while True:
                 a = random.uniform(-1, 1)
-                px1 = px + random.uniform(-2, 2) * (self.robot.radius * 4) 
+                px1 = px + random.uniform(-2, 2) * ((self.robot.width**2+self.robot.length**2)**0.5) 
                 py1 = py + random.uniform(-2, 2) * sign
                 collide = False
                 if norm((px-px1, py-py1)) > min_path_dist:
                     break
-            for agent in [self.robot] + self.humans:
-                if norm((px - agent.px, py - agent.py)) < human1.radius + agent.radius + self.discomfort_dist:
+            for i, agent in enumerate([self.robot] + self.humans):
+                if i == 0:
+                    agent_dist = (self.robot.width**2+self.robot.length**2)**0.5
+                else:
+                    agent_dist = agent.radius
+                if norm((px - agent.px, py - agent.py)) < human1.radius + agent_dist + self.discomfort_dist:
                     collide = True
                     break
-                if norm((px1 - agent.px, py1 - agent.py)) < human2.radius + agent.radius + self.discomfort_dist:
+                if norm((px1 - agent.px, py1 - agent.py)) < human2.radius + agent_dist + self.discomfort_dist:
                     collide = True
                     break
             if not collide:
@@ -390,7 +406,8 @@ class CrowdSim(gym.Env):
             ex = px + vx * self.time_step
             ey = py + vy * self.time_step
             # closest distance between boundaries of two agents
-            closest_dist = point_to_segment_dist(px, py, ex, ey, 0, 0) - human.radius - self.robot.radius
+            robot_dist = (self.robot.width**2+self.robot.length**2)**0.5
+            closest_dist = point_to_segment_dist(px, py, ex, ey, 0, 0) - human.radius - robot_dist
             if closest_dist < 0:
                 collision = True
                 logging.debug("Collision: distance between robot and p{} is {:.2E} at time {:.2E}".format(human.id, closest_dist, self.global_time))
@@ -411,7 +428,7 @@ class CrowdSim(gym.Env):
 
         # check if reaching the goal
         end_position = np.array(self.robot.compute_position(action, self.time_step))
-        reaching_goal = norm(end_position - np.array(self.robot.get_goal_position())) < self.robot.radius
+        reaching_goal = norm(end_position - np.array(self.robot.get_goal_position())) < robot_dist
 
         if self.global_time >= self.time_limit - 1:
             reward = 0
@@ -590,8 +607,8 @@ class CrowdSim(gym.Env):
                                  color=goal_color, marker='*', linestyle='None',
                                  markersize=15, label='Goal')
             ori_x, ori_y = robot_positions[0]
-            leftb_x, leftb_y = ori_x-self.robot.radius, ori_y-self.robot.radius
-            robot = plt.Rectangle((leftb_x, leftb_y), self.robot.radius*2, self.robot.radius*2, fill=False, color=robot_color, label='Robot')
+            leftb_x, leftb_y = ori_x-self.robot.width/2, ori_y-self.robot.length/2
+            robot = plt.Rectangle((leftb_x, leftb_y), self.robot.width, self.robot.length, fill=False, color=robot_color, label='Robot')
             # robot = plt.Circle(robot_positions[0], self.robot.radius, fill=False, color=robot_color, label='Robot')
             # sensor_range = plt.Circle(robot_positions[0], self.robot_sensor_range, fill=False, ls='dashed')
             ax.add_artist(robot)
@@ -634,7 +651,9 @@ class CrowdSim(gym.Env):
             #                  fontsize=16) for i in range(len(self.humans))]
 
             # compute orientation in each step and use arrow to show the direction
-            radius = self.robot.radius
+            # radius = self.robot.radius
+            robot_safe_dist = (self.robot.width**2+self.robot.length**2)**0.5
+            agent_dist = 0.3
             orientations = []
             for i in range(self.human_num + 1):
                 orientation = []
@@ -642,12 +661,20 @@ class CrowdSim(gym.Env):
                     agent_state = state[0] if i == 0 else state[1][i - 1]
                     if self.robot.kinematics == 'unicycle' and i == 0:
                         direction = (
-                        (agent_state.px, agent_state.py), (agent_state.px + radius * np.cos(agent_state.theta),
-                                                           agent_state.py + radius * np.sin(agent_state.theta)))
+                        (agent_state.px, agent_state.py), (agent_state.px + agent_dist * np.cos(agent_state.theta),
+                                                           agent_state.py + agent_dist * np.sin(agent_state.theta)))
                     else:
                         theta = np.arctan2(agent_state.vy, agent_state.vx)
-                        direction = ((agent_state.px, agent_state.py), (agent_state.px + radius * np.cos(theta),
-                                                                        agent_state.py + radius * np.sin(theta)))
+                        # robot
+                        if i == 0:
+                            # robot center
+                            x = agent_state.px - self.robot.width/2
+                            y = agent_state.py - self.robot.length/2
+                            direction = ((x, y), (x + agent_dist * np.cos(theta),
+                                                                        y + agent_dist * np.sin(theta)))
+                        else:
+                            direction = ((agent_state.px, agent_state.py), (agent_state.px + agent_dist * np.cos(theta),
+                                                                            agent_state.py + agent_dist * np.sin(theta)))
                     orientation.append(direction)
                 orientations.append(orientation)
                 if i == 0:   
@@ -689,7 +716,7 @@ class CrowdSim(gym.Env):
                 global_step = frame_num
                 robot.center = robot_positions[frame_num]
                 ori_x, ori_y = robot_positions[frame_num]
-                leftb_x, leftb_y = ori_x-self.robot.radius, ori_y-self.robot.radius 
+                leftb_x, leftb_y = ori_x-self.robot.width, ori_y-self.robot.length 
                 robot.xy = (leftb_x, leftb_y)
 
                 for i, human in enumerate(humans):
