@@ -76,7 +76,8 @@ class CrowdSim(gym.Env):
         self.human_goals = []
 
         self.phase = None
-        self.social_rate = 0.4
+        self.human_social_rate = 0.4
+        self.human_static_rate = 0.2
         self._seed = None
         self.interaction_lines = list()
 
@@ -172,17 +173,47 @@ class CrowdSim(gym.Env):
             if not collide:
                 break
         while True:
-            gx = np.random.random() * self.square_width * 0.5 * - sign
-            gy = (np.random.random() - 0.5) * self.square_width
+            gx = np.random.random() * self.square_width * - sign
+            gy = np.random.random() * self.square_width 
             collide = False
+            stay = False
             for agent in [self.robot] + self.humans:
                 if norm((gx - agent.gx, gy - agent.gy)) < human.radius + agent.radius + self.discomfort_dist:
                     collide = True
                     break
-            if not collide:
+                width = abs(self.square_width*0.5)
+                if abs(gx) < width and abs(gy) < width:
+                    stay = True
+                    break
+            if not collide and not stay:
                 break
         human.set(px, py, gx, gy, 0, 0, 0)
 
+        return human
+
+    def random_static_human(self):
+        human = Human(self.config, 'humans', static=True)
+        human.sample_random_attributes()
+
+        if np.random.random() > 0.5:
+            sign = -1
+        else:
+            sign = 1
+        while True:
+            px = np.random.random() * self.square_width * 0.4 * sign
+            py = (np.random.random() + 0.1) * self.square_width * 0.3
+            collide = False
+            for agent in [self.robot] + self.humans:
+                if norm((px - agent.px, py - agent.py)) < human.radius + agent.radius + self.discomfort_dist:
+                    collide = True
+                    break
+            robot_goal = [self.robot.gx, self.robot.gy]
+            if norm((px - robot_goal[0], py - robot_goal[1])) < human.radius + self.discomfort_dist:
+                collide = True
+            if not collide:
+                break
+        human.set(px, py, px, py, 0, 0, 0)
+        
         return human
 
 
@@ -267,15 +298,19 @@ class CrowdSim(gym.Env):
     def generate_all_humans(self, human_num):
         self.humans = list()
         if self.current_scenario == "social_aware":
-            humun_inter_num =int(human_num*self.social_rate) 
+            humun_inter_num =int(human_num*self.human_social_rate) 
+            human_static_num = int(human_num*self.human_static_rate)
             if humun_inter_num >= 2:
                 humun_inter_num = humun_inter_num if humun_inter_num % 2 == 0 else humun_inter_num - 1
                 human_pair = humun_inter_num//2
                 for _ in range(human_pair):
                     self.humans += self.generate_human_pair()
+                # generate static human
+                for _ in range(human_static_num):
+                    self.humans.append(self.random_static_human())
             else:
                 human_move_num = human_num
-            human_move_num = human_num - humun_inter_num
+            human_move_num = human_num - humun_inter_num - human_static_num
             for _ in range(human_move_num):
                 self.humans.append(self.random_square_crossing_human())
                 
@@ -640,8 +675,11 @@ class CrowdSim(gym.Env):
                 for i in range(self.human_num):
                     circles = []
                     for j in range(self.robot.policy.planning_depth):
-                        circle = plt.Circle(human_future_positions[0][i][j], self.humans[0].radius/(1.7+j), fill=False, color=cmap(i))
-                        ax.add_artist(circle)
+                        if self.humans[i].static or self.humans[i].interaction:
+                            circle = None
+                        else:
+                            circle = plt.Circle(human_future_positions[0][i][j], self.humans[0].radius/(1.7+j), fill=False, color=cmap(i))
+                            ax.add_artist(circle)
                         circles.append(circle)
                     human_future_circles.append(circles)
 
@@ -680,7 +718,8 @@ class CrowdSim(gym.Env):
                 if len(self.trajs) != 0:
                     for i, circles in enumerate(human_future_circles):
                         for j, circle in enumerate(circles):
-                            circle.center = human_future_positions[global_step][i][j]
+                            if circle is not None:
+                                circle.center = human_future_positions[global_step][i][j]
                 
                 for i in range(0, len(self.humans), 2):
                     if self.humans[i].interaction:
@@ -689,7 +728,7 @@ class CrowdSim(gym.Env):
                         theta = np.arctan2(neightbor_x-human_x, neightbor_y-human_y)
                         h_x, n_x = human_x + self.humans[i].radius * np.sin(theta), neightbor_x - self.humans[i+1].radius * np.sin(theta)
                         h_y, n_y = human_y + self.humans[i].radius * np.cos(theta), neightbor_y - self.humans[i+1].radius * np.cos(theta)
-                        interaction_line = self.interaction_lines[i] if i == 0 else self.interaction_lines[i-1]
+                        interaction_line = self.interaction_lines[i//2] 
                         interaction_line.set_data([h_x, n_x], [h_y, n_y])
 
             def plot_value_heatmap():

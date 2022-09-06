@@ -3,10 +3,11 @@ from crowd_sim.envs.utils.state import JointState
 
 
 class Human(Agent):
-    def __init__(self, config, section):
+    def __init__(self, config, section, static=False):
         super().__init__(config, section)
         self.id = None
         self.interaction = None
+        self.static = static
 
     def act(self, ob):
         """
