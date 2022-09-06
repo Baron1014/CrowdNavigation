@@ -47,7 +47,7 @@ class Agent(object):
         self.v_pref = np.random.uniform(0.5, 1.5)
         self.radius = np.random.uniform(0.3, 0.5)
 
-    def set(self, px, py, gx, gy, vx, vy, theta, radius=None, v_pref=None):
+    def set(self, px, py, gx, gy, vx, vy, theta, radius=None, v_pref=None, interaction=None):
         self.px = px
         self.py = py
         self.sx = px
@@ -61,6 +61,8 @@ class Agent(object):
             self.radius = radius
         if v_pref is not None:
             self.v_pref = v_pref
+        if interaction is not None:
+            self.interaction = interaction
 
     def get_observable_state(self):
         return ObservableState(self.px, self.py, self.vx, self.vy, self.radius)

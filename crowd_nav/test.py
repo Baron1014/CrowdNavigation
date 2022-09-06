@@ -78,6 +78,8 @@ def main(args):
         env.test_scenario = 'square_crossing'
     if args.circle:
         env.test_scenario = 'circle_crossing'
+    if args.social:
+        env.test_scenario = 'social_aware'
     if args.test_scenario is not None:
         env.test_scenario = args.test_scenario
 
@@ -153,16 +155,17 @@ if __name__ == '__main__':
     parser.add_argument('--il', default=False, action='store_true')
     parser.add_argument('--rl', default=False, action='store_true')
     parser.add_argument('--gpu', default=False, action='store_true')
-    parser.add_argument('-v', '--visualize', default=False, action='store_true')
+    parser.add_argument('-v', '--visualize', default=True, action='store_true')
     parser.add_argument('--phase', type=str, default='test')
     parser.add_argument('-c', '--test_case', type=int, default=None)
     parser.add_argument('--square', default=False, action='store_true')
     parser.add_argument('--circle', default=False, action='store_true')
+    parser.add_argument('--social', default=True, action='store_true')
     parser.add_argument('--video_file', type=str, default=None)
     parser.add_argument('--video_dir', type=str, default=None)
     parser.add_argument('--traj', default=False, action='store_true')
     parser.add_argument('--debug', default=False, action='store_true')
-    parser.add_argument('--human_num', type=int, default=None)
+    parser.add_argument('--human_num', type=int, default=10)
     parser.add_argument('--safety_space', type=float, default=0.2)
     parser.add_argument('--test_scenario', type=str, default=None)
     parser.add_argument('--plot_test_scenarios_hist', default=True, action='store_true')
