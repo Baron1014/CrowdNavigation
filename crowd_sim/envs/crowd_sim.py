@@ -375,7 +375,7 @@ class CrowdSim(gym.Env):
         return self.step(action, update=False)
 
     def getCloestEdgeDist(self, x1, y1, x2, y2):
-        width, length = self.robot.width, self.robot.length
+        width, length = self.robot.width/2, self.robot.length/2
         if abs(x1-x2) > width and abs(y1-y2) > length:
             # right
             if x1 > 0:

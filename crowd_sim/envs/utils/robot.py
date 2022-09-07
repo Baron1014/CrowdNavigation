@@ -17,4 +17,4 @@ class Robot(Agent):
         return action
 
     def get_full_state(self):
-        return FullState(self.px, self.py, self.vx, self.vy, self.length, self.gx, self.gy, self.v_pref, self.theta)
+        return FullState(self.px, self.py, self.vx, self.vy, 0.3, self.gx, self.gy, self.v_pref, self.theta)
