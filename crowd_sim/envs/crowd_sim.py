@@ -623,10 +623,12 @@ class CrowdSim(gym.Env):
                                                 marker='o', linestyle='None', markersize=8)
                     ax.add_artist(human_start)
             # add robot start position
-            robot_start = mlines.Line2D([self.robot.get_start_position()[0]], [self.robot.get_start_position()[1]],
-                                        color=robot_color,
-                                        marker='s', linestyle='None', markersize=8)
+            # robot_start = mlines.Line2D([self.robot.get_start_position()[0]], [self.robot.get_start_position()[1]],
+            #                             color=robot_color,
+            #                             marker='s', linestyle='None', markersize=8)
             robot_start_position = [self.robot.get_start_position()[0], self.robot.get_start_position()[1]]
+            leftb_x, leftb_y = robot_start_position[0]-self.robot.width/2, robot_start_position[1]-self.robot.length/2
+            robot_start = plt.Rectangle((leftb_x, leftb_y), self.robot.width, self.robot.length, fill=True, color=robot_color)
             ax.add_artist(robot_start)
             # add robot and its goal
             robot_positions = [state[0].position for state in self.states]
