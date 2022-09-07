@@ -531,7 +531,7 @@ class CrowdSim(gym.Env):
                 ob += [self.robot.get_observable_state()]
         return ob
 
-    def render(self, mode='video', output_file=None):
+    def render(self, mode='video', output_file=None, info=False):
         from matplotlib import animation
         import matplotlib.pyplot as plt
         # plt.rcParams['animation.ffmpeg_path'] = '/usr/bin/ffmpeg'
@@ -784,6 +784,14 @@ class CrowdSim(gym.Env):
                         h_y, n_y = human_y + self.humans[i].radius * np.cos(theta), neightbor_y - self.humans[i+1].radius * np.cos(theta)
                         interaction_line = self.interaction_lines[i//2] 
                         interaction_line.set_data([h_x, n_x], [h_y, n_y])
+                if info:
+                    if len(self.states)-1 == frame_num:
+                        if str(info)=='Collision':
+                            plt.title(info, color='red', fontsize=20, fontweight="bold")
+                        elif str(info)=='Reaching goal':
+                            plt.title(info, color='#22C32E', fontsize=20, fontweight="bold")
+                        else:
+                            plt.title(info, color='#FFBF00', fontsize=20, fontweight="bold")
 
             def plot_value_heatmap():
                 if self.robot.kinematics != 'holonomic':
@@ -849,7 +857,7 @@ class CrowdSim(gym.Env):
                 anim.running ^= True
 
             fig.canvas.mpl_connect('key_press_event', on_click)
-            anim = animation.FuncAnimation(fig, update, frames=len(self.states), interval=self.time_step * 500)
+            anim = animation.FuncAnimation(fig, update, frames=len(self.states), interval=self.time_step * 500, repeat=False)
             anim.running = True
 
             if output_file is not None:

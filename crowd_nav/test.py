@@ -132,7 +132,7 @@ def main(args):
                 else:
                     args.video_file = os.path.join(args.video_dir, policy_config.name)
                 args.video_file = args.video_file + '_' + args.phase + '_' + str(args.test_case) + '.mp4'
-            env.render('video', args.video_file)
+            env.render('video', args.video_file, info)
         logging.info('It takes %.2f seconds to finish. Final status is %s, cumulative_reward is %f', env.global_time, info, cumulative_reward)
         if robot.visible and info == 'reach goal':
             human_times = env.get_human_times()
@@ -157,7 +157,7 @@ if __name__ == '__main__':
     parser.add_argument('--gpu', default=False, action='store_true')
     parser.add_argument('-v', '--visualize', default=True, action='store_true')
     parser.add_argument('--phase', type=str, default='test')
-    parser.add_argument('-c', '--test_case', type=int, default=2)
+    parser.add_argument('-c', '--test_case', type=int, default=3)
     parser.add_argument('--square', default=False, action='store_true')
     parser.add_argument('--circle', default=False, action='store_true')
     parser.add_argument('--social', default=True, action='store_true')
