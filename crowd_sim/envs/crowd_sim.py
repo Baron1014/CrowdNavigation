@@ -16,7 +16,7 @@ from crowd_sim.envs.utils.state import tensor_to_joint_state, JointState
 from crowd_sim.envs.utils.action import ActionRot
 from crowd_sim.envs.utils.human import Human
 from crowd_sim.envs.utils.info import *
-from crowd_sim.envs.utils.utils import point_to_segment_dist
+from crowd_sim.envs.utils.utils import point_to_segment_dist, point_to_clostest
 
 
 class CrowdSim(gym.Env):
@@ -374,6 +374,27 @@ class CrowdSim(gym.Env):
     def onestep_lookahead(self, action):
         return self.step(action, update=False)
 
+    def getCloestEdgeDist(self, x1, y1, x2, y2):
+        width, length = self.robot.width, self.robot.length
+        if abs(x1-x2) > width and abs(y1-y2) > length:
+            # right
+            if x1 > 0:
+                # if I else IV
+                min_dist = ((x1-width)**2 + (y1-length)**2)**0.5 if y1 > 0 else ((x1-width)**2 + (y1-(-length))**2)**0.5
+            # left
+            else:
+                width = -width
+                # if II else III
+                min_dist = ((x1-width)**2 + (y1-length)**2)**0.5 if y1 > 0 else ((x1-width)**2 + (y1-(-length))**2)**0.5
+        # right or left side
+        elif abs(x1-x2) > width and abs(y1-y2) < length:
+            min_dist = x1-x2-width if x1 > 0 else abs(x1-x2+width)
+        # top or bottom side
+        elif abs(x1-x2) < width and abs(y1-y2) > length:
+            min_dist = y1-y2-length if y1 > 0 else abs(y1-y2+length)
+
+        return min_dist
+
     def step(self, action, update=True):
         """
         Compute actions for all agents, detect collision, update environment and return (ob, reward, done, info)
@@ -406,11 +427,15 @@ class CrowdSim(gym.Env):
             ex = px + vx * self.time_step
             ey = py + vy * self.time_step
             # closest distance between boundaries of two agents
-            robot_dist = (self.robot.width**2+self.robot.length**2)**0.5
-            closest_dist = point_to_segment_dist(px, py, ex, ey, 0, 0) - human.radius - robot_dist
-            if closest_dist < 0:
+            # robot_dist = (self.robot.width**2+self.robot.length**2)**0.5
+            # closest_dist = point_to_segment_dist(px, py, ex, ey, 0, 0) - human.radius
+            closest_x, closest_y = point_to_clostest(px, py, ex, ey, 0, 0)
+            closest_dist = self.getCloestEdgeDist(closest_x, closest_y, 0, 0) - human.radius
+            # min_x_dist, min_y_dist =  abs(closest_x)-human.radius, abs(closest_y)-human.radius
+            if closest_dist<0:
                 collision = True
                 logging.debug("Collision: distance between robot and p{} is {:.2E} at time {:.2E}".format(human.id, closest_dist, self.global_time))
+                # logging.debug("Collision: distance between robot and p{} is x={:.2E} y={:.2E} at time {:.2E}".format(human.id, min_x_dist, min_y_dist, self.global_time))
                 break
             elif closest_dist < dmin:
                 dmin = closest_dist
@@ -428,7 +453,9 @@ class CrowdSim(gym.Env):
 
         # check if reaching the goal
         end_position = np.array(self.robot.compute_position(action, self.time_step))
-        reaching_goal = norm(end_position - np.array(self.robot.get_goal_position())) < robot_dist
+        goal_delta_x, goal_delta_y = end_position - np.array(self.robot.get_goal_position())
+        # reaching_goal = norm(end_position - np.array(self.robot.get_goal_position())) < closest_dist
+        reaching_goal = True if abs(goal_delta_x) < self.robot.width/2 and abs(goal_delta_y) < self.robot.length/2 else False
 
         if self.global_time >= self.time_limit - 1:
             reward = 0
