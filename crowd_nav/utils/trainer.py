@@ -103,7 +103,7 @@ class MPRLTrainer(object):
             if self.writer != None:
                 self.writer.log({'IL/epoch_v_loss': epoch_v_loss / len(self.memory)}, step=epoch)
                 self.writer.log({'IL/epoch_s_loss': epoch_s_loss / len(self.memory)}, step=epoch)
-            logging.info('Average loss in epoch %d: %.2E, %.2E', epoch, epoch_v_loss / len(self.memory),
+            logging.info('Average loss in epoch %d: value loss=%.2E, graph loss=%.2E', epoch, epoch_v_loss / len(self.memory),
                          epoch_s_loss / len(self.memory))
 
         return

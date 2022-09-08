@@ -28,6 +28,7 @@ class Explorer(object):
         collision = 0
         timeout = 0
         discomfort = 0
+        interrupt = 0
         min_dist = []
         cumulative_rewards = []
         average_returns = []
@@ -55,6 +56,7 @@ class Explorer(object):
                 if isinstance(info, Discomfort):
                     discomfort += 1
                     min_dist.append(info.min_dist)
+                # if isinstance(info, Interrupt)
 
             if isinstance(info, ReachGoal):
                 success += 1

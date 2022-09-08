@@ -6,7 +6,7 @@ import itertools
 from crowd_sim.envs.policy.policy import Policy
 from crowd_sim.envs.utils.action import ActionRot, ActionXY
 from crowd_sim.envs.utils.state import tensor_to_joint_state
-from crowd_sim.envs.utils.utils import point_to_segment_dist
+from crowd_sim.envs.utils.utils import point_to_segment_dist, point_to_clostest, getCloestEdgeDist
 from crowd_nav.policy.state_predictor import StatePredictor, LinearStatePredictor
 from crowd_nav.policy.graph_model import RGL
 from crowd_nav.policy.value_estimator import ValueEstimator
@@ -325,7 +325,9 @@ class ModelPredictiveRL(Policy):
             ex = px + vx * self.time_step
             ey = py + vy * self.time_step
             # closest distance between boundaries of two agents
-            closest_dist = point_to_segment_dist(px, py, ex, ey, 0, 0) - human.radius - robot_state.radius
+            # closest_dist = point_to_segment_dist(px, py, ex, ey, 0, 0) - human.radius - robot_state.radius
+            closest_x, closest_y = point_to_clostest(px, py, ex, ey, 0, 0)
+            closest_dist = getCloestEdgeDist(closest_x, closest_y, 0, 0, robot_state.width/2, robot_state.length/2) - human.radius
             if closest_dist < 0:
                 collision = True
                 break

@@ -16,7 +16,7 @@ from crowd_sim.envs.utils.state import tensor_to_joint_state, JointState
 from crowd_sim.envs.utils.action import ActionRot
 from crowd_sim.envs.utils.human import Human
 from crowd_sim.envs.utils.info import *
-from crowd_sim.envs.utils.utils import point_to_segment_dist, point_to_clostest
+from crowd_sim.envs.utils.utils import getCloestEdgeDist, point_to_clostest
 
 
 class CrowdSim(gym.Env):
@@ -246,6 +246,7 @@ class CrowdSim(gym.Env):
         base_seed = {'train': self.case_capacity['val'] + self.case_capacity['test'],
                      'val': 0, 'test': self.case_capacity['val']}
 
+        # (px, py, gx, gy, vx, vy, theta)
         self.robot.set(0, -self.circle_radius, 0, self.circle_radius, 0, 0, np.pi / 2)
         if self.case_counter[phase] >= 0:
             self._seed = base_seed[phase] + self.case_counter[phase]
@@ -374,27 +375,6 @@ class CrowdSim(gym.Env):
     def onestep_lookahead(self, action):
         return self.step(action, update=False)
 
-    def getCloestEdgeDist(self, x1, y1, x2, y2):
-        width, length = self.robot.width/2, self.robot.length/2
-        if abs(x1-x2) > width and abs(y1-y2) > length:
-            # right
-            if x1 > 0:
-                # if I else IV
-                min_dist = ((x1-width)**2 + (y1-length)**2)**0.5 if y1 > 0 else ((x1-width)**2 + (y1-(-length))**2)**0.5
-            # left
-            else:
-                width = -width
-                # if II else III
-                min_dist = ((x1-width)**2 + (y1-length)**2)**0.5 if y1 > 0 else ((x1-width)**2 + (y1-(-length))**2)**0.5
-        # right or left side
-        elif abs(x1-x2) > width and abs(y1-y2) < length:
-            min_dist = x1-x2-width if x1 > 0 else abs(x1-x2+width)
-        # top or bottom side
-        elif abs(x1-x2) < width and abs(y1-y2) > length:
-            min_dist = y1-y2-length if y1 > 0 else abs(y1-y2+length)
-
-        return min_dist
-
     def step(self, action, update=True):
         """
         Compute actions for all agents, detect collision, update environment and return (ob, reward, done, info)
@@ -430,7 +410,7 @@ class CrowdSim(gym.Env):
             # robot_dist = (self.robot.width**2+self.robot.length**2)**0.5
             # closest_dist = point_to_segment_dist(px, py, ex, ey, 0, 0) - human.radius
             closest_x, closest_y = point_to_clostest(px, py, ex, ey, 0, 0)
-            closest_dist = self.getCloestEdgeDist(closest_x, closest_y, 0, 0) - human.radius
+            closest_dist = getCloestEdgeDist(closest_x, closest_y, 0, 0, self.robot.width/2, self.robot.length/2) - human.radius
             # min_x_dist, min_y_dist =  abs(closest_x)-human.radius, abs(closest_y)-human.radius
             if closest_dist<0:
                 collision = True

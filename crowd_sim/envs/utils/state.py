@@ -2,16 +2,18 @@ import torch
 
 
 class FullState(object):
-    def __init__(self, px, py, vx, vy, radius, gx, gy, v_pref, theta):
+    def __init__(self, px, py, vx, vy, gx, gy, v_pref, robot_width=False, robot_length=False, radius=False, theta=False):
         self.px = px
         self.py = py
         self.vx = vx
         self.vy = vy
-        self.radius = radius
         self.gx = gx
         self.gy = gy
         self.v_pref = v_pref
         self.theta = theta
+        self.radius = radius
+        self.width = robot_width
+        self.length = robot_length
 
         self.position = (self.px, self.py)
         self.goal_position = (self.gx, self.gy)
