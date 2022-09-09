@@ -52,11 +52,15 @@ class Explorer(object):
                 states.append(self.robot.policy.last_state)
                 actions.append(action)
                 rewards.append(reward)
-
+                
+                if len(info)==2:
+                    if isinstance(info[-1], Interrupt):
+                        interrupt+=1
+                
+                info=info[0]
                 if isinstance(info, Discomfort):
                     discomfort += 1
                     min_dist.append(info.min_dist)
-                # if isinstance(info, Interrupt)
 
             if isinstance(info, ReachGoal):
                 success += 1
@@ -103,6 +107,7 @@ class Explorer(object):
             total_time = sum(success_times + collision_times + timeout_times)
             logging.info('Frequency of being in danger: %.2f and average min separate distance in danger: %.2f',
                          discomfort / total_time, average(min_dist))
+            logging.info("Interrupt human interaction: {:.2f}".format(interrupt/total_time))
 
         if print_failure:
             logging.info('Collision cases: ' + ' '.join([str(x) for x in collision_cases]))

@@ -63,17 +63,17 @@ def getCloestEdgeDist(x1, y1, x2, y2, robot_width, robot_length):
             min_dist = ((x1-robot_width)**2 + (y1-robot_length)**2)**0.5 if y1 > 0 else ((x1-robot_width)**2 + (y1-(-robot_length))**2)**0.5
     # right or left side
     elif abs(x1-x2) > robot_width and abs(y1-y2) < robot_length:
-        min_dist = x1-x2-robot_width if x1 > 0 else abs(x1-x2+robot_width)
+        min_dist = abs(x1-x2-robot_width) if x1 > 0 else abs(x1-x2+robot_width)
     # top or bottom side
     elif abs(x1-x2) < robot_width and abs(y1-y2) > robot_length:
-        min_dist = y1-y2-robot_length if y1 > 0 else abs(y1-y2+robot_length)
+        min_dist = abs(y1-y2-robot_length) if y1 > 0 else abs(y1-y2+robot_length)
     else:
         min_dist = 0
 
     return min_dist
 
 # ax + by + c = 0
-def checkinLinearEquation(x1, y1, x2, y2, x3, y3):
+def checkonLinearEquationSide(x1, y1, x2, y2, x3, y3):
     sign = 1
     a = y2 - y1
     if a < 0:
@@ -82,4 +82,11 @@ def checkinLinearEquation(x1, y1, x2, y2, x3, y3):
     b = sign*(x1-x2)
     c = sign*(y1*x2-x1*y2)
 
-    return True if a*x3 + b*y3 + c == 0 else False
+    # check point on side of line
+    r = 0
+    if a*x3 + b*y3 + c > 0:
+        r = 1
+    elif a*x3 + b*y3 + c < 0:
+        r = -1
+
+    return r

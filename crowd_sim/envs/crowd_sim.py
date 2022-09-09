@@ -16,7 +16,7 @@ from crowd_sim.envs.utils.state import tensor_to_joint_state, JointState
 from crowd_sim.envs.utils.action import ActionRot
 from crowd_sim.envs.utils.human import Human
 from crowd_sim.envs.utils.info import *
-from crowd_sim.envs.utils.utils import getCloestEdgeDist, point_to_clostest
+from crowd_sim.envs.utils.utils import getCloestEdgeDist, point_to_clostest, checkonLinearEquationSide
 
 
 class CrowdSim(gym.Env):
@@ -411,11 +411,9 @@ class CrowdSim(gym.Env):
             # closest_dist = point_to_segment_dist(px, py, ex, ey, 0, 0) - human.radius
             closest_x, closest_y = point_to_clostest(px, py, ex, ey, 0, 0)
             closest_dist = getCloestEdgeDist(closest_x, closest_y, 0, 0, self.robot.width/2, self.robot.length/2) - human.radius
-            # min_x_dist, min_y_dist =  abs(closest_x)-human.radius, abs(closest_y)-human.radius
             if closest_dist<0:
                 collision = True
                 logging.debug("Collision: distance between robot and p{} is {:.2E} at time {:.2E}".format(human.id, closest_dist, self.global_time))
-                # logging.debug("Collision: distance between robot and p{} is x={:.2E} y={:.2E} at time {:.2E}".format(human.id, min_x_dist, min_y_dist, self.global_time))
                 break
             elif closest_dist < dmin:
                 dmin = closest_dist
@@ -430,9 +428,24 @@ class CrowdSim(gym.Env):
                 if dist < 0:
                     # detect collision but don't take humans' collision into account
                     logging.debug('Collision happens between humans in step()')
+        
+        # check if crossing the human interaction
+        end_position = np.array(self.robot.compute_position(action, self.time_step))
+        if self.current_scenario == "social_aware":
+            interrupt = False
+            for i in range(0, len(self.humans), 2):
+                if self.humans[i].interaction is not None:
+                    human_point, neighbor_point = self.humans[i].get_position(), self.humans[i].interaction[0].get_position()
+                    rx, ry = self.robot.get_position()
+                    robot_current_side = checkonLinearEquationSide(*human_point, *neighbor_point, rx, ry)
+                    robot_end_side = checkonLinearEquationSide(*human_point, *neighbor_point, *end_position)
+                    left_x, right_x = (human_point[0], neighbor_point[0]) if human_point[0] < neighbor_point[0] else (neighbor_point[0], human_point[0])
+                    if robot_current_side != robot_end_side and left_x<rx<right_x:
+                        interrupt = True
+                        break
+            
 
         # check if reaching the goal
-        end_position = np.array(self.robot.compute_position(action, self.time_step))
         goal_delta_x, goal_delta_y = end_position - np.array(self.robot.get_goal_position())
         # reaching_goal = norm(end_position - np.array(self.robot.get_goal_position())) < closest_dist
         reaching_goal = True if abs(goal_delta_x) < self.robot.width/2 and abs(goal_delta_y) < self.robot.length/2 else False
@@ -440,25 +453,28 @@ class CrowdSim(gym.Env):
         if self.global_time >= self.time_limit - 1:
             reward = 0
             done = True
-            info = Timeout()
+            info = [Timeout()]
         elif collision:
             reward = self.collision_penalty
             done = True
-            info = Collision()
+            info = [Collision()]
         elif reaching_goal:
             reward = self.success_reward
             done = True
-            info = ReachGoal()
+            info = [ReachGoal()]
         elif dmin < self.discomfort_dist:
             # adjust the reward based on FPS
             reward = (dmin - self.discomfort_dist) * self.discomfort_penalty_factor * self.time_step
             done = False
-            info = Discomfort(dmin)
+            info = [Discomfort(dmin)]
         else:
             reward = 0
             done = False
-            info = Nothing()
+            info = [Nothing()]
 
+        if interrupt:
+            info.append(Interrupt())
+        
         if update:
             # store state, action value and attention weights
             if hasattr(self.robot.policy, 'action_values'):
