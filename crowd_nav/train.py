@@ -118,7 +118,7 @@ def main(args):
         rl_weight_file = os.path.join(args.output_dir, 'resumed_rl_model.pth')
         logging.info('Load reinforcement learning trained weights. Resume training')
     elif os.path.exists(il_weight_file):
-        model.load_state_dict(torch.load(il_weight_file))
+        model.load_state_dict(torch.load(il_weight_file), False)
         logging.info('Load imitation learning trained weights.')
     else:
         il_episodes = train_config.imitation_learning.il_episodes
@@ -192,6 +192,8 @@ def main(args):
             if episode % checkpoint_interval == 0 and reward > best_val_reward:
                 best_val_reward = reward
                 best_val_model = copy.deepcopy(policy.get_state_dict())
+                torch.save(best_val_model, os.path.join(args.output_dir, 'best_val.pth'))
+                logging.info('Save the best val model with the reward: {}'.format(best_val_reward))
 
         if episode != 0 and episode % checkpoint_interval == 0:
             current_checkpoint = episode // checkpoint_interval - 1
@@ -201,8 +203,8 @@ def main(args):
     # # test with the best val model
     if best_val_model is not None:
         policy.load_state_dict(best_val_model)
-        torch.save(best_val_model, os.path.join(args.output_dir, 'best_val.pth'))
-        logging.info('Save the best val model with the reward: {}'.format(best_val_reward))
+        # torch.save(best_val_model, os.path.join(args.output_dir, 'best_val.pth'))
+        # logging.info('Save the best val model with the reward: {}'.format(best_val_reward))
     explorer.run_k_episodes(env.case_size['test'], 'test', episode=episode, print_failure=True)
 
     if args.wandb:
