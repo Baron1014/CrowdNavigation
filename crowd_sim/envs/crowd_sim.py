@@ -141,15 +141,18 @@ class CrowdSim(gym.Env):
             px = self.circle_radius * np.cos(angle) + px_noise
             py = self.circle_radius * np.sin(angle) + py_noise
             collide = False
-            for agent in [self.robot] + self.humans:
-                min_dist = human.radius + agent.radius + self.discomfort_dist
-                if norm((px - agent.px, py - agent.py)) < min_dist or \
-                        norm((px - agent.gx, py - agent.gy)) < min_dist:
+            for i, agent in enumerate([self.robot] + self.humans):
+                if i == 0:
+                    agent_dist = (self.robot.width**2+self.robot.length**2)**0.5
+                else:
+                    agent_dist = agent.radius
+                if norm((px - agent.px, py - agent.py)) < agent_dist or \
+                        norm((px - agent.gx, py - agent.gy)) < agent_dist:
                     collide = True
                     break
             if not collide:
                 break
-        human.set(px, py, -px, -py, 0, 0, 0)
+        human.set(px, py, -px*4, -py*4, 0, 0, 0)
 
         return human
 
@@ -325,7 +328,8 @@ class CrowdSim(gym.Env):
                 human_move_num = human_num
             human_move_num = human_num - humun_inter_num - human_static_num
             for _ in range(human_move_num):
-                self.humans.append(self.random_square_crossing_human())
+                # self.humans.append(self.random_square_crossing_human())
+                self.humans.append(self.random_circle_crossing_human())
                 
         else:
             for _ in range(human_num):
@@ -531,6 +535,7 @@ class CrowdSim(gym.Env):
         from matplotlib import animation
         import matplotlib.pyplot as plt
         # plt.rcParams['animation.ffmpeg_path'] = '/usr/bin/ffmpeg'
+        frame = 0
         x_offset = 0.2
         y_offset = 0.4
         cmap = plt.cm.get_cmap('hsv', 10)
@@ -631,7 +636,7 @@ class CrowdSim(gym.Env):
             goal = mlines.Line2D([self.robot.get_goal_position()[0]], [self.robot.get_goal_position()[1]],
                                  color=goal_color, marker='*', linestyle='None',
                                  markersize=15, label='Goal')
-            ori_x, ori_y = robot_positions[0]
+            ori_x, ori_y = robot_positions[frame]
             leftb_x, leftb_y = ori_x-self.robot.width/2, ori_y-self.robot.length/2
             robot = plt.Rectangle((leftb_x, leftb_y), self.robot.width, self.robot.length, fill=False, color=robot_color, label='Robot')
             # robot = plt.Circle(robot_positions[0], self.robot.radius, fill=False, color=robot_color, label='Robot')
@@ -641,7 +646,7 @@ class CrowdSim(gym.Env):
 
             # add humans and their numbers
             human_positions = [[state[1][j].position for j in range(len(self.humans))] for state in self.states]
-            humans = [plt.Circle(human_positions[0][i], self.humans[i].radius, fill=False, color=cmap(i))
+            humans = [plt.Circle(human_positions[frame][i], self.humans[i].radius, fill=False, color=cmap(i))
                       for i in range(len(self.humans))]
             # humans = [plt.Circle(human_positions[0][i], self.humans[i].radius, fill=False, color=human_color)
             #           for i in range(len(self.humans))]
@@ -693,8 +698,8 @@ class CrowdSim(gym.Env):
                         # robot
                         if i == 0:
                             # robot center
-                            x = agent_state.px - self.robot.width/2
-                            y = agent_state.py - self.robot.length/2
+                            x = agent_state.px 
+                            y = agent_state.py 
                             direction = ((x, y), (x + agent_dist * np.cos(theta),
                                                                         y + agent_dist * np.sin(theta)))
                         else:
@@ -740,8 +745,8 @@ class CrowdSim(gym.Env):
                 nonlocal arrows
                 global_step = frame_num
                 robot.center = robot_positions[frame_num]
-                ori_x, ori_y = robot_positions[frame_num]
-                leftb_x, leftb_y = ori_x-self.robot.width, ori_y-self.robot.length 
+                ori_x, ori_y = robot.center
+                leftb_x, leftb_y = ori_x-self.robot.width/2, ori_y-self.robot.length/2
                 robot.xy = (leftb_x, leftb_y)
 
                 for i, human in enumerate(humans):
