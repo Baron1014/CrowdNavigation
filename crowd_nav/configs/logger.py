@@ -7,6 +7,8 @@ def log_setting(args, log_file):
     file_handler = logging.FileHandler(log_file, mode=mode)
     stdout_handler = logging.StreamHandler(sys.stdout)
     level = logging.INFO if not args.debug else logging.DEBUG
+    for handler in logging.root.handlers[:]:
+        logging.root.removeHandler(handler)
     logging.basicConfig(level=level, handlers=[stdout_handler, file_handler],
                         format='%(asctime)s, %(levelname)s: %(message)s', datefmt="%Y-%m-%d %H:%M:%S")
     logging.info('Current config content is :{}'.format(config))
