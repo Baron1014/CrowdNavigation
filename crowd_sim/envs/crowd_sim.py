@@ -435,8 +435,8 @@ class CrowdSim(gym.Env):
         
         # check if crossing the human interaction
         end_position = np.array(self.robot.compute_position(action, self.time_step))
+        interrupt = False
         if self.current_scenario == "social_aware":
-            interrupt = False
             for i in range(0, len(self.humans), 2):
                 if self.humans[i].interaction is not None:
                     human_point, neighbor_point = self.humans[i].get_position(), self.humans[i].interaction[0].get_position()
@@ -669,7 +669,10 @@ class CrowdSim(gym.Env):
                     h_x, n_x = human_x + self.humans[i].radius * np.sin(theta), neightbor_x - self.humans[i+1].radius * np.sin(theta)
                     h_y, n_y = human_y + self.humans[i].radius * np.cos(theta), neightbor_y - self.humans[i+1].radius * np.cos(theta)
                     self.interaction_lines.append(plt.plot([h_x, n_x], [h_y, n_y], 'k-')[0])
-            plt.legend([robot, goal, self.interaction_lines[0]], ['Robot', 'Goal', 'Interaction'], fontsize=14)
+            if len(self.interaction_lines) > 0:
+                plt.legend([robot, goal, self.interaction_lines[0]], ['Robot', 'Goal', 'Interaction'], fontsize=14)
+            else:
+                plt.legend([robot, goal], ['Robot', 'Goal'], fontsize=14)
             # add time annotation
             time = plt.text(0.4, 0.9, 'Time: {}'.format(0), fontsize=16, transform=ax.transAxes)
             ax.add_artist(time)
@@ -860,17 +863,18 @@ class CrowdSim(gym.Env):
                 anim.running ^= True
 
             fig.canvas.mpl_connect('key_press_event', on_click)
-            anim = animation.FuncAnimation(fig, update, frames=len(self.states), interval=self.time_step * 500, repeat=False)
+            anim = animation.FuncAnimation(fig, update, frames=len(self.states), interval=self.time_step * 500, repeat=True)
             anim.running = True
 
             if output_file is not None:
                 # save as video
-                ffmpeg_writer = animation.FFMpegWriter(fps=10, metadata=dict(artist='Me'), bitrate=1800)
+                # ffmpeg_writer = animation.FFMpegWriter(fps=10, metadata=dict(artist='Me'), bitrate=1800)
                 # writer = ffmpeg_writer(fps=10, metadata=dict(artist='Me'), bitrate=1800)
-                anim.save(output_file, writer=ffmpeg_writer)
+                # anim.save(output_file, writer=ffmpeg_writer)
 
                 # save output file as gif if imagemagic is installed
                 # anim.save(output_file, writer='imagemagic', fps=12)
+                anim.save(output_file, writer='imagemagic')
             else:
                 plt.show()
         else:

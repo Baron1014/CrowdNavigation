@@ -1,8 +1,37 @@
 import torch
 
 
-class FullState(object):
-    def __init__(self, px, py, vx, vy, gx, gy, v_pref, robot_width=False, robot_length=False, radius=False, theta=False):
+# class FullState(object):
+#     def __init__(self, px, py, vx, vy, gx, gy, v_pref, theta, robot_size):
+#         self.px = px
+#         self.py = py
+#         self.vx = vx
+#         self.vy = vy
+#         self.gx = gx
+#         self.gy = gy
+#         self.v_pref = v_pref
+#         self.theta = theta
+#         self.length, self.width = robot_size
+
+#         self.position = (self.px, self.py)
+#         self.goal_position = (self.gx, self.gy)
+#         self.velocity = (self.vx, self.vy)
+
+#     def __add__(self, other):
+#         return other + (self.px, self.py, self.vx, self.vy, self.radius, self.gx, self.gy, self.v_pref, self.theta)
+
+#     def __str__(self):
+#         return ' '.join([str(x) for x in [self.px, self.py, self.vx, self.vy, self.radius, self.gx, self.gy,
+#                                           self.v_pref, self.theta]])
+
+#     def to_tuple(self):
+#         return self.px, self.py, self.vx, self.vy, self.radius, self.gx, self.gy, self.v_pref, self.theta
+
+#     def get_observable_state(self):
+#         return ObservableState(self.px, self.py, self.vx, self.vy, self.radius)
+
+class RobotState(object):
+    def __init__(self, px, py, vx, vy, gx, gy, v_pref, theta, robot_size):
         self.px = px
         self.py = py
         self.vx = vx
@@ -11,9 +40,36 @@ class FullState(object):
         self.gy = gy
         self.v_pref = v_pref
         self.theta = theta
+        self.length, self.width = robot_size
+
+        self.position = (self.px, self.py)
+        self.goal_position = (self.gx, self.gy)
+        self.velocity = (self.vx, self.vy)
+
+    # def __add__(self, other):
+    #     return other + (self.px, self.py, self.vx, self.vy, self.radius, self.gx, self.gy, self.v_pref, self.theta)
+
+    # def __str__(self):
+    #     return ' '.join([str(x) for x in [self.px, self.py, self.vx, self.vy, self.radius, self.gx, self.gy,
+    #                                       self.v_pref, self.theta]])
+
+    def to_tuple(self):
+        return self.px, self.py, self.vx, self.vy, self.length, self.width, self.gx, self.gy, self.v_pref, self.theta
+
+    # def get_observable_state(self):
+    #     return ObservableState(self.px, self.py, self.vx, self.vy, self.radius)
+
+class HumanState(object):
+    def __init__(self, px, py, vx, vy, radius, gx, gy, v_pref, theta):
+        self.px = px
+        self.py = py
+        self.vx = vx
+        self.vy = vy
         self.radius = radius
-        self.width = robot_width
-        self.length = robot_length
+        self.gx = gx
+        self.gy = gy
+        self.v_pref = v_pref
+        self.theta = theta
 
         self.position = (self.px, self.py)
         self.goal_position = (self.gx, self.gy)
@@ -56,7 +112,7 @@ class ObservableState(object):
 
 class JointState(object):
     def __init__(self, robot_state, human_states):
-        assert isinstance(robot_state, FullState)
+        assert isinstance(robot_state, RobotState)
         for human_state in human_states:
             assert isinstance(human_state, ObservableState)
 
@@ -85,7 +141,7 @@ def tensor_to_joint_state(state):
     robot_state, human_states = state
 
     robot_state = robot_state.cpu().squeeze().data.numpy()
-    robot_state = FullState(robot_state[0], robot_state[1], robot_state[2], robot_state[3], robot_state[4],
+    robot_state = RobotState(robot_state[0], robot_state[1], robot_state[2], robot_state[3], robot_state[4],
                             robot_state[5], robot_state[6], robot_state[7], robot_state[8])
     human_states = human_states.cpu().squeeze(0).data.numpy()
     human_states = [ObservableState(human_state[0], human_state[1], human_state[2], human_state[3],

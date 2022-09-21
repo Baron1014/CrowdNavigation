@@ -5,7 +5,7 @@ import itertools
 import logging
 from crowd_sim.envs.policy.policy import Policy
 from crowd_sim.envs.utils.action import ActionRot, ActionXY
-from crowd_sim.envs.utils.state import ObservableState, FullState
+from crowd_sim.envs.utils.state import ObservableState, RobotState
 
 
 def mlp(input_dim, mlp_dims, last_relu=False):
@@ -116,13 +116,13 @@ class CADRL(Policy):
             next_px = state.px + action.vx * self.time_step
             next_py = state.py + action.vy * self.time_step
             next_state = ObservableState(next_px, next_py, action.vx, action.vy, state.radius)
-        elif isinstance(state, FullState):
+        elif isinstance(state, RobotState):
             # propagate state of current agent
             # perform action without rotation
             if self.kinematics == 'holonomic':
                 next_px = state.px + action.vx * self.time_step
                 next_py = state.py + action.vy * self.time_step
-                next_state = FullState(next_px, next_py, action.vx, action.vy, state.radius,
+                next_state = RobotState(next_px, next_py, action.vx, action.vy, state.radius,
                                        state.gx, state.gy, state.v_pref, state.theta)
             else:
                 next_theta = state.theta + action.r
@@ -130,7 +130,7 @@ class CADRL(Policy):
                 next_vy = action.v * np.sin(next_theta)
                 next_px = state.px + next_vx * self.time_step
                 next_py = state.py + next_vy * self.time_step
-                next_state = FullState(next_px, next_py, next_vx, next_vy, state.radius, state.gx, state.gy,
+                next_state = RobotState(next_px, next_py, next_vx, next_vy, state.radius, state.gx, state.gy,
                                        state.v_pref, next_theta)
         else:
             raise ValueError('Type error')

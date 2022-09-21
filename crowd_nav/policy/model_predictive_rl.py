@@ -29,7 +29,7 @@ class ModelPredictiveRL(Policy):
         self.speeds = None
         self.rotations = None
         self.action_values = None
-        self.robot_state_dim = 9
+        self.robot_state_dim = 10
         self.human_state_dim = 5
         self.v_pref = 1
         self.share_graph_model = None
@@ -343,8 +343,9 @@ class ModelPredictiveRL(Policy):
             px = robot_state.px + np.cos(theta) * action.v * self.time_step
             py = robot_state.py + np.sin(theta) * action.v * self.time_step
 
-        end_position = np.array((px, py))
-        reaching_goal = norm(end_position - np.array([robot_state.gx, robot_state.gy])) < robot_state.radius
+        # end_position = np.array((px, py))
+        goal_delta_x, goal_delta_y = robot_state.px - robot_state.gx, robot_state.py - robot_state.gy
+        reaching_goal = abs(goal_delta_x) < robot_state.width/2 and abs(goal_delta_y) < robot_state.length/2
 
         if collision:
             reward = -0.25

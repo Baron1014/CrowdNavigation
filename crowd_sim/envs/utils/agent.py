@@ -4,7 +4,7 @@ import numpy as np
 from numpy.linalg import norm
 from crowd_sim.envs.policy.policy_factory import policy_factory
 from crowd_sim.envs.utils.action import ActionXY, ActionRot
-from crowd_sim.envs.utils.state import ObservableState, FullState
+from crowd_sim.envs.utils.state import ObservableState, RobotState, HumanState
 
 
 class Agent(object):
@@ -79,7 +79,7 @@ class Agent(object):
         return ObservableState(next_px, next_py, next_vx, next_vy, self.radius)
 
     def get_full_state(self):
-        return FullState(self.px, self.py, self.vx, self.vy, self.gx, self.gy, self.v_pref, radius=self.radius, theta=self.theta)
+        return HumanState(self.px, self.py, self.vx, self.vy, self.radius, self.gx, self.gy, self.v_pref, self.theta)
 
     def get_position(self):
         return self.px, self.py

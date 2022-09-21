@@ -28,10 +28,10 @@ class BaseEnvConfig(object):
     reward.discomfort_penalty_factor = 0.5
 
     sim = Config()
-    # sim.train_val_scenario = 'circle_crossing'
-    # sim.test_scenario = 'circle_crossing'
-    sim.train_val_scenario = 'social_aware'
-    sim.test_scenario = 'social_aware'
+    sim.train_val_scenario = 'circle_crossing'
+    sim.test_scenario = 'circle_crossing'
+    # sim.train_val_scenario = 'social_aware'
+    # sim.test_scenario = 'social_aware'
     sim.square_width = 20
     sim.circle_radius = 4
     sim.human_num = 5
@@ -70,7 +70,8 @@ class BasePolicyConfig(object):
     om.om_channel_size = 3
 
     action_space = Config()
-    action_space.kinematics = 'holonomic'
+    # action_space.kinematics = 'holonomic'
+    action_space.kinematics = 'difference'
     action_space.speed_samples = 5
     action_space.rotation_samples = 16
     action_space.sampling = 'exponential'

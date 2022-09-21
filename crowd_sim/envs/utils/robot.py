@@ -1,5 +1,5 @@
 from crowd_sim.envs.utils.agent import Agent
-from crowd_sim.envs.utils.state import JointState, FullState
+from crowd_sim.envs.utils.state import JointState, RobotState
 
 
 class Robot(Agent):
@@ -18,4 +18,4 @@ class Robot(Agent):
 
     def get_full_state(self):
         # return FullState(self.px, self.py, self.vx, self.vy, self.gx, self.gy, self.v_pref, radius=0.3, theta=3.1415/2)
-        return FullState(self.px, self.py, self.vx, self.vy, self.gx, self.gy, self.v_pref, robot_width=self.width, robot_length=self.length)
+        return RobotState(self.px, self.py, self.vx, self.vy, self.gx, self.gy, self.v_pref, self.theta, robot_size=(self.length, self.width))

@@ -131,8 +131,8 @@ def main(args):
                     args.video_file = os.path.join(args.video_dir, policy_config.name + '_' + policy_config.gcn.similarity_function)
                 else:
                     args.video_file = os.path.join(args.video_dir, policy_config.name)
-                args.video_file = args.video_file + '_' + args.phase + '_' + str(args.test_case) + '.mp4'
-            env.render('video', args.video_file, info)
+                args.video_file = args.video_file + '_' + args.phase + '_' + str(args.test_case) + '.gif'
+            env.render('video', args.video_file, info[0])
         logging.info('It takes %.2f seconds to finish. Final status is %s, cumulative_reward is %f', env.global_time, info, cumulative_reward)
         if robot.visible and info == 'reach goal':
             human_times = env.get_human_times()
@@ -155,17 +155,17 @@ if __name__ == '__main__':
     parser.add_argument('--il', default=False, action='store_true')
     parser.add_argument('--rl', default=False, action='store_true')
     parser.add_argument('--gpu', default=False, action='store_true')
-    parser.add_argument('-v', '--visualize', default=True, action='store_true')
+    parser.add_argument('-v', '--visualize', default=False, action='store_true')
     parser.add_argument('--phase', type=str, default='test')
-    parser.add_argument('-c', '--test_case', type=int, default=5)
+    parser.add_argument('-c', '--test_case', type=int, default=None)
     parser.add_argument('--square', default=False, action='store_true')
     parser.add_argument('--circle', default=False, action='store_true')
-    parser.add_argument('--social', default=True, action='store_true')
+    parser.add_argument('--social', default=False, action='store_true')
     parser.add_argument('--video_file', type=str, default=None)
     parser.add_argument('--video_dir', type=str, default=None)
     parser.add_argument('--traj', default=False, action='store_true')
     parser.add_argument('--debug', default=False, action='store_true')
-    parser.add_argument('--human_num', type=int, default=10)
+    parser.add_argument('--human_num', type=int, default=5)
     parser.add_argument('--safety_space', type=float, default=0.2)
     parser.add_argument('--test_scenario', type=str, default=None)
     parser.add_argument('--plot_test_scenarios_hist', default=True, action='store_true')

@@ -59,7 +59,9 @@ class Policy(object):
     @staticmethod
     def reach_destination(state):
         robot_state = state.robot_state
-        if np.linalg.norm((robot_state.py - robot_state.gy, robot_state.px - robot_state.gx)) < robot_state.radius:
+        # if np.linalg.norm((robot_state.py - robot_state.gy, robot_state.px - robot_state.gx)) < robot_state.radius:
+        goal_delta_x, goal_delta_y = robot_state.px - robot_state.gx, robot_state.py - robot_state.gy
+        if abs(goal_delta_x) < robot_state.width/2 and abs(goal_delta_y) < robot_state.length/2:
             return True
         else:
             return False
