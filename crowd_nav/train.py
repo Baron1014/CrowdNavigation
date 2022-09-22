@@ -118,6 +118,8 @@ def main(args):
         rl_weight_file = os.path.join(args.output_dir, 'resumed_rl_model.pth')
         logging.info('Load reinforcement learning trained weights. Resume training')
     elif os.path.exists(il_weight_file):
+        # gpu
+        # model.load_state_dict(torch.load(il_weight_file, map_location=torch.device('cpu')), False)
         model.load_state_dict(torch.load(il_weight_file), False)
         logging.info('Load imitation learning trained weights.')
     else:
@@ -187,7 +189,8 @@ def main(args):
         # evaluate the model
         if episode % evaluation_interval == 0:
             _, _, _, reward, _ = explorer.run_k_episodes(env.case_size['val'], 'val', episode=episode)
-            explorer.log('val', episode // evaluation_interval)
+            if writer!=None:
+                explorer.log('val', episode // evaluation_interval)
 
             if episode % checkpoint_interval == 0 and reward > best_val_reward:
                 best_val_reward = reward
