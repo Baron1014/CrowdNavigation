@@ -148,8 +148,11 @@ class ModelPredictiveRL(Policy):
     def save_model(self, file):
         torch.save(self.get_state_dict(), file)
 
-    def load_model(self, file):
-        checkpoint = torch.load(file)
+    def load_model(self, file, cpu=False):
+        if cpu:
+            checkpoint = torch.load(file, map_location=torch.device('cpu'))
+        else:
+            checkpoint = torch.load(file)
         self.load_state_dict(checkpoint)
 
     def build_action_space(self, v_pref):
