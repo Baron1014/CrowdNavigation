@@ -250,7 +250,7 @@ class CrowdSim(gym.Env):
                      'val': 0, 'test': self.case_capacity['val']}
 
         # (px, py, gx, gy, vx, vy, theta)
-        self.robot.set(0, -self.circle_radius, 0, self.circle_radius, 0, 0, np.pi / 2)
+        self.robot.set(0, -self.circle_radius, 0, self.circle_radius, 0, 0, 0)
         if self.case_counter[phase] >= 0:
             self._seed = base_seed[phase] + self.case_counter[phase]
             np.random.seed(self._seed)
