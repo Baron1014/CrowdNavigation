@@ -636,12 +636,13 @@ class CrowdSim(gym.Env):
             goal = mlines.Line2D([self.robot.get_goal_position()[0]], [self.robot.get_goal_position()[1]],
                                  color=goal_color, marker='*', linestyle='None',
                                  markersize=15, label='Goal')
-            ori_x, ori_y = robot_positions[frame]
-            leftb_x, leftb_y = ori_x-self.robot.width/2, ori_y-self.robot.length/2
-            robot = plt.Rectangle((leftb_x, leftb_y), self.robot.width, self.robot.length, fill=False, color=robot_color, label='Robot')
+            robot_left_positions = []
+            for x, y in robot_positions:
+                leftb_x, leftb_y = x-self.robot.width/2, y-self.robot.length/2
+                robot_left_positions.append((leftb_x, leftb_y))
+            robot = patches.Rectangle(robot_left_positions[frame], self.robot.width, self.robot.length, fill=False, color=robot_color, label='Robot')
             # robot = plt.Circle(robot_positions[0], self.robot.radius, fill=False, color=robot_color, label='Robot')
             # sensor_range = plt.Circle(robot_positions[0], self.robot_sensor_range, fill=False, ls='dashed')
-            ax.add_artist(robot)
             ax.add_artist(goal)
 
             # add humans and their numbers
@@ -685,12 +686,13 @@ class CrowdSim(gym.Env):
 
             # compute orientation in each step and use arrow to show the direction
             # radius = self.robot.radius
-            robot_safe_dist = (self.robot.width**2+self.robot.length**2)**0.5
             agent_dist = 0.3
             orientations = []
+            robot_theta = []
+            robot_rot_center = []
             for i in range(self.human_num + 1):
                 orientation = []
-                for state in self.states:
+                for s_id, state in enumerate(self.states):
                     agent_state = state[0] if i == 0 else state[1][i - 1]
                     if self.robot.kinematics == 'unicycle' and i == 0:
                         direction = (
@@ -701,8 +703,13 @@ class CrowdSim(gym.Env):
                         # robot
                         if i == 0:
                             # robot center
-                            x = agent_state.px 
-                            y = agent_state.py 
+                            # x = agent_state.px 
+                            # y = agent_state.py
+                            adj_theta = theta* 180 / np.pi-90
+                            robot_theta.append(adj_theta)
+                            robot.set_xy(robot_left_positions[s_id])
+                            robot.set_angle(adj_theta)
+                            x, y = robot.get_center()
                             direction = ((x, y), (x + agent_dist * np.cos(theta),
                                                                         y + agent_dist * np.sin(theta)))
                         else:
@@ -712,16 +719,19 @@ class CrowdSim(gym.Env):
                 orientations.append(orientation)
                 if i == 0:   
                     arrow_color = 'black'
-                    arrows = [patches.FancyArrowPatch(*orientation[0], color=arrow_color, arrowstyle=arrow_style)]
+                    arrows = [patches.FancyArrowPatch(*orientation[frame], color=arrow_color, arrowstyle=arrow_style)]
                 else:
                     arrows.extend(
                         [patches.FancyArrowPatch(*orientation[0], color=human_colors[i - 1], arrowstyle=arrow_style)])
                     # arrows.extend(
                     #     [patches.FancyArrowPatch(*orientation[0], color=arrow_color, arrowstyle=arrow_style)])
-
+            
             for arrow in arrows:
                 ax.add_artist(arrow)
             global_step = 0
+            robot.set_xy(robot_left_positions[frame])
+            robot.set_angle(robot_theta[frame])
+            ax.add_artist(robot)
 
             if len(self.trajs) != 0:
                 human_future_positions = []
@@ -747,10 +757,8 @@ class CrowdSim(gym.Env):
                 nonlocal global_step
                 nonlocal arrows
                 global_step = frame_num
-                robot.center = robot_positions[frame_num]
-                ori_x, ori_y = robot.center
-                leftb_x, leftb_y = ori_x-self.robot.width/2, ori_y-self.robot.length/2
-                robot.xy = (leftb_x, leftb_y)
+                robot.set_xy(robot_left_positions[frame_num])
+                robot.set_angle(robot_theta[frame_num])
 
                 for i, human in enumerate(humans):
                     human.center = human_positions[frame_num][i]
