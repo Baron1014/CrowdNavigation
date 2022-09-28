@@ -689,7 +689,6 @@ class CrowdSim(gym.Env):
             agent_dist = 0.3
             orientations = []
             robot_theta = []
-            robot_rot_center = []
             for i in range(self.human_num + 1):
                 orientation = []
                 for s_id, state in enumerate(self.states):

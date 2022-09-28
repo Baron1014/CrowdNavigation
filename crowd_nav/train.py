@@ -118,9 +118,8 @@ def main(args):
         rl_weight_file = os.path.join(args.output_dir, 'resumed_rl_model.pth')
         logging.info('Load reinforcement learning trained weights. Resume training')
     elif os.path.exists(il_weight_file):
-        # gpu
-        # model.load_state_dict(torch.load(il_weight_file, map_location=torch.device('cpu')), False)
-        model.load_state_dict(torch.load(il_weight_file), False)
+        model.load_state_dict(torch.load(il_weight_file, map_location=device), False)
+        # model.load_state_dict(torch.load(il_weight_file), False)
         logging.info('Load imitation learning trained weights.')
     else:
         il_episodes = train_config.imitation_learning.il_episodes
