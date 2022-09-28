@@ -54,7 +54,7 @@ class RobotState(object):
     #                                       self.v_pref, self.theta]])
 
     def to_tuple(self):
-        return self.px, self.py, self.vx, self.vy, self.length, self.width, self.gx, self.gy, self.v_pref, self.theta
+        return self.px, self.py, self.vx, self.vy, self.gx, self.gy, self.v_pref, self.theta, self.length, self.width
 
     # def get_observable_state(self):
     #     return ObservableState(self.px, self.py, self.vx, self.vy, self.radius)
@@ -142,7 +142,7 @@ def tensor_to_joint_state(state):
 
     robot_state = robot_state.cpu().squeeze().data.numpy()
     robot_state = RobotState(robot_state[0], robot_state[1], robot_state[2], robot_state[3], robot_state[4],
-                            robot_state[5], robot_state[6], robot_state[7], robot_state[8])
+                            robot_state[5], robot_state[6], robot_state[7], robot_size=(robot_state[8], robot_state[9]))
     human_states = human_states.cpu().squeeze(0).data.numpy()
     human_states = [ObservableState(human_state[0], human_state[1], human_state[2], human_state[3],
                                     human_state[4]) for human_state in human_states]
