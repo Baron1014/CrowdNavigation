@@ -694,21 +694,25 @@ class CrowdSim(gym.Env):
                 for s_id, state in enumerate(self.states):
                     agent_state = state[0] if i == 0 else state[1][i - 1]
                     if self.robot.kinematics == 'unicycle' and i == 0:
+                        # theta = np.arctan2(agent_state.vy, agent_state.vx)
+                        theta = agent_state.theta
+                        adj_theta = theta* 180 / np.pi-90
+                        robot_theta.append(adj_theta)
+                        robot.set_xy(robot_left_positions[s_id])
+                        robot.set_angle(adj_theta)
+                        x, y = robot.get_center()
+                        # x = agent_state.px 
+                        # y = agent_state.py
                         direction = (
-                        (agent_state.px, agent_state.py), (agent_state.px + agent_dist * np.cos(agent_state.theta),
-                                                           agent_state.py + agent_dist * np.sin(agent_state.theta)))
+                        (x, y), (x + agent_dist * np.cos(agent_state.theta),
+                                                           y + agent_dist * np.sin(agent_state.theta)))
                     else:
                         theta = np.arctan2(agent_state.vy, agent_state.vx)
                         # robot
                         if i == 0:
                             # robot center
-                            # x = agent_state.px 
-                            # y = agent_state.py
-                            adj_theta = theta* 180 / np.pi-90
-                            robot_theta.append(adj_theta)
-                            robot.set_xy(robot_left_positions[s_id])
-                            robot.set_angle(adj_theta)
-                            x, y = robot.get_center()
+                            x = agent_state.px 
+                            y = agent_state.py
                             direction = ((x, y), (x + agent_dist * np.cos(theta),
                                                                         y + agent_dist * np.sin(theta)))
                         else:
@@ -728,8 +732,9 @@ class CrowdSim(gym.Env):
             for arrow in arrows:
                 ax.add_artist(arrow)
             global_step = 0
-            robot.set_xy(robot_left_positions[frame])
-            robot.set_angle(robot_theta[frame])
+            if self.robot.kinematics == 'unicycle':
+                robot.set_xy(robot_left_positions[frame])
+                robot.set_angle(robot_theta[frame])
             ax.add_artist(robot)
 
             if len(self.trajs) != 0:
@@ -756,8 +761,9 @@ class CrowdSim(gym.Env):
                 nonlocal global_step
                 nonlocal arrows
                 global_step = frame_num
+                if self.robot.kinematics == 'unicycle':
+                    robot.set_angle(robot_theta[frame_num])
                 robot.set_xy(robot_left_positions[frame_num])
-                robot.set_angle(robot_theta[frame_num])
 
                 for i, human in enumerate(humans):
                     human.center = human_positions[frame_num][i]
