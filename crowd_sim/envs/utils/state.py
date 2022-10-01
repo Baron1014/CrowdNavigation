@@ -46,12 +46,12 @@ class RobotState(object):
         self.goal_position = (self.gx, self.gy)
         self.velocity = (self.vx, self.vy)
 
-    # def __add__(self, other):
-    #     return other + (self.px, self.py, self.vx, self.vy, self.radius, self.gx, self.gy, self.v_pref, self.theta)
+    def __add__(self, other):
+        return other + (self.px, self.py, self.vx, self.vy, self.gx, self.gy, self.v_pref, self.theta, self.length, self.width)
 
-    # def __str__(self):
-    #     return ' '.join([str(x) for x in [self.px, self.py, self.vx, self.vy, self.radius, self.gx, self.gy,
-    #                                       self.v_pref, self.theta]])
+    def __str__(self):
+        return ' '.join([str(x) for x in [self.px, self.py, self.vx, self.vy, self.gx, self.gy,
+                                          self.v_pref, self.theta, self.length, self.width]])
 
     def to_tuple(self):
         return self.px, self.py, self.vx, self.vy, self.gx, self.gy, self.v_pref, self.theta, self.length, self.width

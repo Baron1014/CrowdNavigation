@@ -218,7 +218,8 @@ class VNRLTrainer(object):
                 epoch_loss += loss.data.item()
             logging.debug('{}-th epoch ends'.format(epoch))
             average_epoch_loss = epoch_loss / len(self.memory)
-            self.writer.add_scalar('IL/average_epoch_loss', average_epoch_loss, epoch)
+            if self.writer != None:
+                self.writer.log({'IL/average_epoch_loss': average_epoch_loss}, step=epoch)
             logging.info('Average loss in epoch %d: %.2E', epoch, average_epoch_loss)
 
         return average_epoch_loss
