@@ -45,16 +45,23 @@ def main(args):
             else:
                 make_new_dir = False
     if make_new_dir:
+        pocliy_config = {
+            'rgl': 'configs/rgl.py',
+            'sarl': 'configs/sarl.py', 
+            'cadrl': 'configs/cadrl.py',
+            'lstm_rl': 'configs/lstm_rl.py'
+        }
+
         os.makedirs(args.output_dir)
-        shutil.copy(args.config, os.path.join(args.output_dir, 'config.py'))
+        shutil.copy(pocliy_config[args.policy], os.path.join(args.output_dir, 'config.py'))
 
 
-    args.config = os.path.join(args.output_dir, 'config.py')
+    cg = os.path.join(args.output_dir, 'config.py')
     log_file = os.path.join(args.output_dir, 'output.log')
     il_weight_file = os.path.join(args.output_dir, 'il_model.pth')
     rl_weight_file = os.path.join(args.output_dir, 'rl_model.pth')
 
-    spec = importlib.util.spec_from_file_location('config', args.config)
+    spec = importlib.util.spec_from_file_location('config', cg)
     if spec is None:
         parser.error('Config file not found.')
     config = importlib.util.module_from_spec(spec)
