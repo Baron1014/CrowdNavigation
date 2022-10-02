@@ -3,6 +3,7 @@ import torch.nn as nn
 import numpy as np
 import itertools
 import logging
+from crowd_sim.envs.utils.utils import getCloestEdgeDist
 from crowd_sim.envs.policy.policy import Policy
 from crowd_sim.envs.utils.action import ActionRot, ActionXY
 from crowd_sim.envs.utils.state import ObservableState, RobotState
@@ -153,10 +154,10 @@ class CADRL(Policy):
         if self.reach_destination(state):
             return ActionXY(0, 0) if self.kinematics == 'holonomic' else ActionRot(0, 0)
         if self.action_space is None:
-            self.build_action_space(state.self_state.v_pref)
+            self.build_action_space(state.robot_state.v_pref)
         if not state.human_states:
             assert self.phase != 'train'
-            return self.select_greedy_action(state.self_state)
+            return self.select_greedy_action(state.robot_state)
 
         probability = np.random.random()
         if self.phase == 'train' and probability < self.epsilon:
@@ -166,7 +167,7 @@ class CADRL(Policy):
             max_min_value = float('-inf')
             max_action = None
             for action in self.action_space:
-                next_self_state = self.propagate(state.self_state, action)
+                next_self_state = self.propagate(state.robot_state, action)
                 if self.query_env:
                     next_human_states, reward, done, info = self.env.onestep_lookahead(action)
                 else:
@@ -179,7 +180,7 @@ class CADRL(Policy):
                 # VALUE UPDATE
                 outputs = self.model(self.rotate(batch_next_states))
                 min_output, min_index = torch.min(outputs, 0)
-                min_value = reward + pow(self.gamma, self.time_step * state.self_state.v_pref) * min_output.data.item()
+                min_value = reward + pow(self.gamma, self.time_step * state.robot_state.v_pref) * min_output.data.item()
                 self.action_values.append(min_value)
                 if min_value > max_min_value:
                     max_min_value = min_value
@@ -234,7 +235,7 @@ class CADRL(Policy):
         :param state:
         :return: tensor of shape (len(state), )
         """
-        state = torch.Tensor([state.self_state + state.human_states[0]]).to(self.device)
+        state = torch.Tensor([state.robot_state + state.human_states[0]]).to(self.device)
         state = self.rotate(state)
         return state
 
@@ -275,3 +276,31 @@ class CADRL(Policy):
                                   reshape((batch, -1))], dim=1), 2, dim=1, keepdim=True)
         new_state = torch.cat([dg, v_pref, theta, length, width, vx, vy, px1, py1, vx1, vy1, radius1, da, radius_sum], dim=1)
         return new_state
+
+    def compute_reward(self, nav, humans):
+        # collision detection
+        dmin = float('inf')
+        collision = False
+        for i, human in enumerate(humans):
+            dist = getCloestEdgeDist(nav.px, nav.py, human.px, human.py, nav.width/2, nav.length/2) - human.radius
+            # dist = np.linalg.norm((nav.px - human.px, nav.py - human.py)) - nav.radius - human.radius
+            if dist < 0:
+                collision = True
+                break
+            if dist < dmin:
+                dmin = dist
+
+        # check if reaching the goal
+        # reaching_goal = np.linalg.norm((nav.px - nav.gx, nav.py - nav.gy)) < nav.radius
+        goal_delta_x, goal_delta_y = nav.px - nav.gx, nav.py - nav.gy
+        reaching_goal = abs(goal_delta_x) < nav.width/2 and abs(goal_delta_y) < nav.length/2
+        if collision:
+            reward = -0.25
+        elif reaching_goal:
+            reward = 1
+        elif dmin < 0.2:
+            reward = (dmin - 0.2) * 0.5 * self.time_step
+        else:
+            reward = 0
+
+        return reward
