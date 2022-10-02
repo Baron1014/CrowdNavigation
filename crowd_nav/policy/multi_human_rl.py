@@ -49,7 +49,7 @@ class MultiHumanRL(CADRL):
                     reward = self.compute_reward(next_robot_state, next_human_states)
                 batch_next_states = torch.cat([torch.Tensor([next_robot_state + next_human_state]).to(self.device)
                                               for next_human_state in next_human_states], dim=0)
-                rotated_batch_input = self.rotate(batch_next_states).unsqueeze(0)
+                rotated_batch_input = self.rotate(batch_next_states).unsqueeze(0) # rotated_batch_input is model input (joinstate)
                 if self.with_om:
                     if occupancy_maps is None:
                         occupancy_maps = self.build_occupancy_maps(next_human_states).unsqueeze(0)
