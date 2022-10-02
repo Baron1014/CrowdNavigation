@@ -1,4 +1,4 @@
-from configs.config import BaseEnvConfig, BasePolicyConfig, BaseTrainConfig, Config
+from crowd_nav.configs.config import BaseEnvConfig, BasePolicyConfig, BaseTrainConfig, Config
 
 
 class EnvConfig(BaseEnvConfig):

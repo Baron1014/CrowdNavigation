@@ -10,7 +10,7 @@ import wandb
 from configs import logger
 from configs import config as global_config
 from crowd_sim.envs.utils.robot import Robot
-from crowd_nav.utils.trainer import MPRLTrainer
+from crowd_nav.utils.trainer import MPRLTrainer, VNRLTrainer
 from crowd_nav.utils.memory import ReplayMemory
 from crowd_nav.utils.explorer import Explorer
 from crowd_nav.policy.policy_factory import policy_factory
@@ -106,18 +106,18 @@ def main(args):
                               freeze_state_predictor=train_config.train.freeze_state_predictor,
                               detach_state_predictor=train_config.train.detach_state_predictor,
                               share_graph_model=policy_config.model_predictive_rl.share_graph_model)
-    # else:
-    #     trainer = VNRLTrainer(model, memory, device, policy, batch_size, optimizer, writer)
+    else:
+        trainer = VNRLTrainer(model, memory, device, policy, batch_size, optimizer, writer)
     explorer = Explorer(env, robot, device, writer, memory, policy.gamma, target_policy=policy)
 
     # imitation learning
-    if args.resume:
-        if not os.path.exists(rl_weight_file):
-            logging.error('RL weights does not exist')
-        model.load_state_dict(torch.load(rl_weight_file))
-        rl_weight_file = os.path.join(args.output_dir, 'resumed_rl_model.pth')
-        logging.info('Load reinforcement learning trained weights. Resume training')
-    elif os.path.exists(il_weight_file):
+    # if args.resume:
+    #     if not os.path.exists(rl_weight_file):
+    #         logging.error('RL weights does not exist')
+    #     model.load_state_dict(torch.load(rl_weight_file))
+    #     rl_weight_file = os.path.join(args.output_dir, 'resumed_rl_model.pth')
+    #     logging.info('Load reinforcement learning trained weights. Resume training')
+    if os.path.exists(il_weight_file):
         model.load_state_dict(torch.load(il_weight_file, map_location=device), False)
         # model.load_state_dict(torch.load(il_weight_file), False)
         logging.info('Load imitation learning trained weights.')
@@ -215,7 +215,6 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser('Parse configuration file')
-    parser.add_argument('--policy', type=str, default='model_predictive_rl')
     parser.add_argument('--output_dir', type=str, default='data/output')
     parser.add_argument('--overwrite', default=False, action='store_true')
     parser.add_argument('--resume', default=False, action='store_true')

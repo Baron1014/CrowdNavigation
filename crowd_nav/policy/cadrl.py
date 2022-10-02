@@ -57,7 +57,7 @@ class CADRL(Policy):
         self.cell_num = None
         self.cell_size = None
         self.om_channel_size = None
-        self.self_state_dim = 6
+        self.self_state_dim = 7
         self.human_state_dim = 7
         self.joint_state_dim = self.self_state_dim + self.human_state_dim
 
@@ -122,16 +122,16 @@ class CADRL(Policy):
             if self.kinematics == 'holonomic':
                 next_px = state.px + action.vx * self.time_step
                 next_py = state.py + action.vy * self.time_step
-                next_state = RobotState(next_px, next_py, action.vx, action.vy, state.radius,
-                                       state.gx, state.gy, state.v_pref, state.theta)
+                next_state = RobotState(next_px, next_py, action.vx, action.vy,
+                                       state.gx, state.gy, state.v_pref, state.theta, robot_size=(state.length, state.width))
             else:
                 next_theta = state.theta + action.r
                 next_vx = action.v * np.cos(next_theta)
                 next_vy = action.v * np.sin(next_theta)
                 next_px = state.px + next_vx * self.time_step
                 next_py = state.py + next_vy * self.time_step
-                next_state = RobotState(next_px, next_py, next_vx, next_vy, state.radius, state.gx, state.gy,
-                                       state.v_pref, next_theta)
+                next_state = RobotState(next_px, next_py, next_vx, next_vy, state.gx, state.gy,
+                                       state.v_pref, next_theta, robot_size=(state.length, state.width))
         else:
             raise ValueError('Type error')
 

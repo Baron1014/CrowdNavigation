@@ -50,23 +50,35 @@ def point_to_clostest(x1, y1, x2, y2, x3, y3):
     return [x, y]
 
 
-def getCloestEdgeDist(x1, y1, x2, y2, robot_width, robot_length):
-    if abs(x1-x2) > robot_width and abs(y1-y2) > robot_length:
+def getCloestEdgeDist(x1, y1, x2, y2, robot_hw, robot_hl):
+    '''
+    Parameters:
+        x1, y1: point on robot edges. 
+        robot_hw: half width of robot
+        robot_hl: half length of robot
+
+    if: distance from vertex
+    elif: distance from right or left side
+    elif: distance from top or bottom side
+    else: inside of robot
+    '''
+    if abs(x1-x2) > robot_hw and abs(y1-y2) > robot_hl:
         # right
-        if x1 > 0:
+        if x1-x2 > 0:
             # if I else IV
-            min_dist = ((x1-robot_width)**2 + (y1-robot_length)**2)**0.5 if y1 > 0 else ((x1-robot_width)**2 + (y1-(-robot_length))**2)**0.5
+            # min_dist = ((x1-robot_hw)-x2**2 + (y1-robot_hl)**2)**0.5 if y1-y2 > 0 else ((x1-robot_hw)**2 + (y1-(-robot_hl))**2)**0.5
+            min_dist = np.linalg.norm(((x1-robot_hw)-x2, (y1-robot_hl)-y2)) if y1-y2 > 0 else np.linalg.norm(((x1-robot_hw)-x2, (y1+robot_hl)-y2))
         # left
         else:
-            robot_width = -robot_width
+            robot_hw = -robot_hw
             # if II else III
-            min_dist = ((x1-robot_width)**2 + (y1-robot_length)**2)**0.5 if y1 > 0 else ((x1-robot_width)**2 + (y1-(-robot_length))**2)**0.5
+            min_dist = ((x1-robot_hw)**2 + (y1-robot_hl)**2)**0.5 if y1 > 0 else ((x1-robot_hw)**2 + (y1-(-robot_hl))**2)**0.5
     # right or left side
-    elif abs(x1-x2) > robot_width and abs(y1-y2) < robot_length:
-        min_dist = abs(x1-x2-robot_width) if x1 > 0 else abs(x1-x2+robot_width)
+    elif abs(x1-x2) > robot_hw and abs(y1-y2) < robot_hl:
+        min_dist = abs(x1-x2-robot_hw) if x1 > 0 else abs(x1-x2+robot_hw)
     # top or bottom side
-    elif abs(x1-x2) < robot_width and abs(y1-y2) > robot_length:
-        min_dist = abs(y1-y2-robot_length) if y1 > 0 else abs(y1-y2+robot_length)
+    elif abs(x1-x2) < robot_hw and abs(y1-y2) > robot_hl:
+        min_dist = abs(y1-y2-robot_hl) if y1 > 0 else abs(y1-y2+robot_hl)
     else:
         min_dist = 0
 

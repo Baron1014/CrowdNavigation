@@ -3,6 +3,7 @@ import logging
 import numpy as np
 from crowd_sim.envs.utils.action import ActionRot, ActionXY
 from crowd_nav.policy.cadrl import CADRL
+from crowd_sim.envs.utils.utils import getCloestEdgeDist
 
 
 class MultiHumanRL(CADRL):
@@ -48,7 +49,7 @@ class MultiHumanRL(CADRL):
                     reward = self.compute_reward(next_robot_state, next_human_states)
                 batch_next_states = torch.cat([torch.Tensor([next_robot_state + next_human_state]).to(self.device)
                                               for next_human_state in next_human_states], dim=0)
-                rotated_batch_input = self.rotate(batch_next_states).unsqueeze(0)
+                rotated_batch_input = self.rotate(batch_next_states).unsqueeze(0) # rotated_batch_input is model input (joinstate)
                 if self.with_om:
                     if occupancy_maps is None:
                         occupancy_maps = self.build_occupancy_maps(next_human_states).unsqueeze(0)
@@ -75,7 +76,8 @@ class MultiHumanRL(CADRL):
         dmin = float('inf')
         collision = False
         for i, human in enumerate(humans):
-            dist = np.linalg.norm((nav.px - human.px, nav.py - human.py)) - nav.radius - human.radius
+            dist = getCloestEdgeDist(nav.px, nav.py, human.px, human.py, nav.width/2, nav.length/2) - human.radius
+            # dist = np.linalg.norm((nav.px - human.px, nav.py - human.py)) - nav.radius - human.radius
             if dist < 0:
                 collision = True
                 break
@@ -83,7 +85,9 @@ class MultiHumanRL(CADRL):
                 dmin = dist
 
         # check if reaching the goal
-        reaching_goal = np.linalg.norm((nav.px - nav.gx, nav.py - nav.gy)) < nav.radius
+        # reaching_goal = np.linalg.norm((nav.px - nav.gx, nav.py - nav.gy)) < nav.radius
+        goal_delta_x, goal_delta_y = nav.px - nav.gx, nav.py - nav.gy
+        reaching_goal = abs(goal_delta_x) < nav.width/2 and abs(goal_delta_y) < nav.length/2
         if collision:
             reward = -0.25
         elif reaching_goal:
@@ -102,7 +106,7 @@ class MultiHumanRL(CADRL):
         :param state:
         :return: tensor of shape (# of humans, len(state))
         """
-        state_tensor = torch.cat([torch.Tensor([state.robot_state + human_state]).to(self.device)
+        state_tensor = torch.cat([torch.Tensor([state.robot_state + human_state])
                                   for human_state in state.human_states], dim=0)
         rotated_state_tensor = self.rotate(state_tensor)
         if self.with_om:

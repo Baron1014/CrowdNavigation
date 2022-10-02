@@ -265,7 +265,7 @@ class ModelPredictiveRL(Policy):
                     if len(clipped_action_space) == width:
                         break
         else:
-            max_indexes = np.argpartition(np.array(values), -width)[-width:]
+            max_indexes = np.argpartition(np.array([value.detach().numpy() for value in values]), -width)[-width:]
             clipped_action_space = [action_space[i] for i in max_indexes]
 
         # print(clipped_action_space)
