@@ -1,0 +1,324 @@
+2022-10-01 17:23:17, INFO: Current config content is :<module 'configs.config' from '/home/baron/Research/Master/crowd_nav/configs/config.py'>
+2022-10-01 17:23:17, INFO: Using device: cpu
+2022-10-01 17:23:17, INFO: Query environment: False
+2022-10-01 17:23:17, INFO: Policy: OM-SARL w/ global state
+2022-10-01 17:23:17, INFO: human number: 5
+2022-10-01 17:23:17, INFO: Not randomize human's radius and preferred speed
+2022-10-01 17:23:17, INFO: Training simulation: circle_crossing, test simulation: circle_crossing
+2022-10-01 17:23:17, INFO: Square width: 20, circle width: 4
+2022-10-01 17:23:17, INFO: Lr: 0.001 for parameters mlp1.0.weight mlp1.0.bias mlp1.2.weight mlp1.2.bias mlp2.0.weight mlp2.0.bias mlp2.2.weight mlp2.2.bias attention.0.weight attention.0.bias attention.2.weight attention.2.bias attention.4.weight attention.4.bias mlp3.0.weight mlp3.0.bias mlp3.2.weight mlp3.2.bias mlp3.4.weight mlp3.4.bias mlp3.6.weight mlp3.6.bias with Adam optimizer
+2022-10-01 17:34:04, INFO: TRAIN has success rate: 0.95, collision rate: 0.01, nav time: 14.28, total reward: 0.2279, average return: 0.5042
+2022-10-01 17:43:50, INFO: Average loss in epoch 0: 7.66E-05
+2022-10-01 17:43:57, INFO: Average loss in epoch 1: 2.64E-05
+2022-10-01 17:44:04, INFO: Average loss in epoch 2: 2.27E-05
+2022-10-01 17:44:16, INFO: Average loss in epoch 3: 2.03E-05
+2022-10-01 17:44:25, INFO: Average loss in epoch 4: 1.85E-05
+2022-10-01 17:44:39, INFO: Average loss in epoch 5: 1.73E-05
+2022-10-01 17:44:56, INFO: Average loss in epoch 6: 1.61E-05
+2022-10-01 17:45:28, INFO: Average loss in epoch 7: 1.52E-05
+2022-10-01 17:45:35, INFO: Average loss in epoch 8: 1.42E-05
+2022-10-01 17:45:45, INFO: Average loss in epoch 9: 1.34E-05
+2022-10-01 17:45:52, INFO: Average loss in epoch 10: 1.27E-05
+2022-10-01 17:45:59, INFO: Average loss in epoch 11: 1.21E-05
+2022-10-01 17:46:06, INFO: Average loss in epoch 12: 1.13E-05
+2022-10-01 17:46:14, INFO: Average loss in epoch 13: 1.12E-05
+2022-10-01 17:46:22, INFO: Average loss in epoch 14: 1.06E-05
+2022-10-01 17:46:29, INFO: Average loss in epoch 15: 9.76E-06
+2022-10-01 17:46:36, INFO: Average loss in epoch 16: 9.49E-06
+2022-10-01 17:46:44, INFO: Average loss in epoch 17: 9.18E-06
+2022-10-01 17:46:52, INFO: Average loss in epoch 18: 9.04E-06
+2022-10-01 17:46:59, INFO: Average loss in epoch 19: 8.26E-06
+2022-10-01 17:47:07, INFO: Average loss in epoch 20: 7.89E-06
+2022-10-01 17:47:13, INFO: Average loss in epoch 21: 8.59E-06
+2022-10-01 17:47:19, INFO: Average loss in epoch 22: 7.86E-06
+2022-10-01 17:47:26, INFO: Average loss in epoch 23: 7.19E-06
+2022-10-01 17:47:32, INFO: Average loss in epoch 24: 7.53E-06
+2022-10-01 17:47:38, INFO: Average loss in epoch 25: 6.82E-06
+2022-10-01 17:47:45, INFO: Average loss in epoch 26: 6.78E-06
+2022-10-01 17:47:51, INFO: Average loss in epoch 27: 6.54E-06
+2022-10-01 17:47:58, INFO: Average loss in epoch 28: 6.45E-06
+2022-10-01 17:48:04, INFO: Average loss in epoch 29: 6.16E-06
+2022-10-01 17:48:12, INFO: Average loss in epoch 30: 6.25E-06
+2022-10-01 17:48:19, INFO: Average loss in epoch 31: 5.79E-06
+2022-10-01 17:48:27, INFO: Average loss in epoch 32: 6.26E-06
+2022-10-01 17:48:49, INFO: Average loss in epoch 33: 5.66E-06
+2022-10-01 17:49:01, INFO: Average loss in epoch 34: 5.64E-06
+2022-10-01 17:49:13, INFO: Average loss in epoch 35: 5.73E-06
+2022-10-01 17:49:25, INFO: Average loss in epoch 36: 5.90E-06
+2022-10-01 17:49:36, INFO: Average loss in epoch 37: 4.98E-06
+2022-10-01 17:49:46, INFO: Average loss in epoch 38: 5.39E-06
+2022-10-01 17:49:54, INFO: Average loss in epoch 39: 5.12E-06
+2022-10-01 17:50:04, INFO: Average loss in epoch 40: 5.36E-06
+2022-10-01 17:50:15, INFO: Average loss in epoch 41: 4.76E-06
+2022-10-01 17:50:25, INFO: Average loss in epoch 42: 4.47E-06
+2022-10-01 17:50:38, INFO: Average loss in epoch 43: 4.42E-06
+2022-10-01 17:50:50, INFO: Average loss in epoch 44: 4.49E-06
+2022-10-01 17:50:58, INFO: Average loss in epoch 45: 4.31E-06
+2022-10-01 17:51:06, INFO: Average loss in epoch 46: 4.86E-06
+2022-10-01 17:51:14, INFO: Average loss in epoch 47: 5.20E-06
+2022-10-01 17:51:21, INFO: Average loss in epoch 48: 3.92E-06
+2022-10-01 17:51:29, INFO: Average loss in epoch 49: 3.89E-06
+2022-10-01 17:51:30, INFO: Finish imitation learning. Weights saved.
+2022-10-01 17:51:30, INFO: Experience set size: 100000/100000
+2022-10-01 17:51:30, INFO: Agent is invisible and has holonomic kinematic constraint
+2022-10-01 17:51:30, INFO: Lr: 0.001 for parameters mlp1.0.weight mlp1.0.bias mlp1.2.weight mlp1.2.bias mlp2.0.weight mlp2.0.bias mlp2.2.weight mlp2.2.bias attention.0.weight attention.0.bias attention.2.weight attention.2.bias attention.4.weight attention.4.bias mlp3.0.weight mlp3.0.bias mlp3.2.weight mlp3.2.bias mlp3.4.weight mlp3.4.bias mlp3.6.weight mlp3.6.bias with Adam optimizer
+2022-10-01 17:54:34, INFO: Current config content is :<module 'configs.config' from '/home/baron/Research/Master/crowd_nav/configs/config.py'>
+2022-10-01 17:54:34, INFO: Using device: cpu
+2022-10-01 17:54:34, INFO: Query environment: False
+2022-10-01 17:54:34, INFO: Policy: OM-SARL w/ global state
+2022-10-01 17:54:34, INFO: human number: 5
+2022-10-01 17:54:34, INFO: Not randomize human's radius and preferred speed
+2022-10-01 17:54:34, INFO: Training simulation: circle_crossing, test simulation: circle_crossing
+2022-10-01 17:54:34, INFO: Square width: 20, circle width: 4
+2022-10-01 17:54:34, INFO: Load imitation learning trained weights.
+2022-10-01 17:54:34, INFO: Agent is invisible and has holonomic kinematic constraint
+2022-10-01 17:54:34, INFO: Lr: 0.001 for parameters mlp1.0.weight mlp1.0.bias mlp1.2.weight mlp1.2.bias mlp2.0.weight mlp2.0.bias mlp2.2.weight mlp2.2.bias attention.0.weight attention.0.bias attention.2.weight attention.2.bias attention.4.weight attention.4.bias mlp3.0.weight mlp3.0.bias mlp3.2.weight mlp3.2.bias mlp3.4.weight mlp3.4.bias mlp3.6.weight mlp3.6.bias with Adam optimizer
+2022-10-01 17:55:34, INFO: Current config content is :<module 'configs.config' from '/home/baron/Research/Master/crowd_nav/configs/config.py'>
+2022-10-01 17:55:34, INFO: Using device: cpu
+2022-10-01 17:55:34, INFO: Query environment: False
+2022-10-01 17:55:35, INFO: Policy: OM-SARL w/ global state
+2022-10-01 17:55:35, INFO: human number: 5
+2022-10-01 17:55:35, INFO: Not randomize human's radius and preferred speed
+2022-10-01 17:55:35, INFO: Training simulation: circle_crossing, test simulation: circle_crossing
+2022-10-01 17:55:35, INFO: Square width: 20, circle width: 4
+2022-10-01 17:55:35, INFO: Load imitation learning trained weights.
+2022-10-01 17:55:35, INFO: Agent is invisible and has holonomic kinematic constraint
+2022-10-01 17:55:35, INFO: Lr: 0.001 for parameters mlp1.0.weight mlp1.0.bias mlp1.2.weight mlp1.2.bias mlp2.0.weight mlp2.0.bias mlp2.2.weight mlp2.2.bias attention.0.weight attention.0.bias attention.2.weight attention.2.bias attention.4.weight attention.4.bias mlp3.0.weight mlp3.0.bias mlp3.2.weight mlp3.2.bias mlp3.4.weight mlp3.4.bias mlp3.6.weight mlp3.6.bias with Adam optimizer
+2022-10-02 12:34:16, INFO: Current config content is :<module 'configs.config' from '/home/baron/Research/Master/crowd_nav/configs/config.py'>
+2022-10-02 12:34:16, INFO: Using device: cpu
+2022-10-02 12:34:16, INFO: Query environment: False
+2022-10-02 12:34:17, INFO: Policy: OM-SARL w/ global state
+2022-10-02 12:34:17, INFO: human number: 5
+2022-10-02 12:34:17, INFO: Not randomize human's radius and preferred speed
+2022-10-02 12:34:17, INFO: Training simulation: circle_crossing, test simulation: circle_crossing
+2022-10-02 12:34:17, INFO: Square width: 20, circle width: 4
+2022-10-02 12:34:17, INFO: Load imitation learning trained weights.
+2022-10-02 12:34:17, INFO: Agent is invisible and has holonomic kinematic constraint
+2022-10-02 12:34:17, INFO: Lr: 0.001 for parameters mlp1.0.weight mlp1.0.bias mlp1.2.weight mlp1.2.bias mlp2.0.weight mlp2.0.bias mlp2.2.weight mlp2.2.bias attention.0.weight attention.0.bias attention.2.weight attention.2.bias attention.4.weight attention.4.bias mlp3.0.weight mlp3.0.bias mlp3.2.weight mlp3.2.bias mlp3.4.weight mlp3.4.bias mlp3.6.weight mlp3.6.bias with Adam optimizer
+2022-10-02 12:57:55, INFO: Current config content is :<module 'configs.config' from '/home/baron/Research/Master/crowd_nav/configs/config.py'>
+2022-10-02 12:57:55, INFO: Using device: cpu
+2022-10-02 12:57:55, INFO: Query environment: False
+2022-10-02 12:57:56, INFO: Policy: OM-SARL w/ global state
+2022-10-02 12:57:56, INFO: human number: 5
+2022-10-02 12:57:56, INFO: Not randomize human's radius and preferred speed
+2022-10-02 12:57:56, INFO: Training simulation: circle_crossing, test simulation: circle_crossing
+2022-10-02 12:57:56, INFO: Square width: 20, circle width: 4
+2022-10-02 12:57:56, INFO: Load imitation learning trained weights.
+2022-10-02 12:57:56, INFO: Agent is invisible and has holonomic kinematic constraint
+2022-10-02 12:57:56, INFO: Lr: 0.001 for parameters mlp1.0.weight mlp1.0.bias mlp1.2.weight mlp1.2.bias mlp2.0.weight mlp2.0.bias mlp2.2.weight mlp2.2.bias attention.0.weight attention.0.bias attention.2.weight attention.2.bias attention.4.weight attention.4.bias mlp3.0.weight mlp3.0.bias mlp3.2.weight mlp3.2.bias mlp3.4.weight mlp3.4.bias mlp3.6.weight mlp3.6.bias with Adam optimizer
+2022-10-02 12:58:08, INFO: Current config content is :<module 'configs.config' from '/home/baron/Research/Master/crowd_nav/configs/config.py'>
+2022-10-02 12:58:08, INFO: Using device: cpu
+2022-10-02 12:58:08, INFO: Query environment: False
+2022-10-02 12:58:08, INFO: Policy: OM-SARL w/ global state
+2022-10-02 12:58:08, INFO: human number: 5
+2022-10-02 12:58:08, INFO: Not randomize human's radius and preferred speed
+2022-10-02 12:58:08, INFO: Training simulation: circle_crossing, test simulation: circle_crossing
+2022-10-02 12:58:08, INFO: Square width: 20, circle width: 4
+2022-10-02 12:58:08, INFO: Load imitation learning trained weights.
+2022-10-02 12:58:08, INFO: Agent is invisible and has holonomic kinematic constraint
+2022-10-02 12:58:08, INFO: Lr: 0.001 for parameters mlp1.0.weight mlp1.0.bias mlp1.2.weight mlp1.2.bias mlp2.0.weight mlp2.0.bias mlp2.2.weight mlp2.2.bias attention.0.weight attention.0.bias attention.2.weight attention.2.bias attention.4.weight attention.4.bias mlp3.0.weight mlp3.0.bias mlp3.2.weight mlp3.2.bias mlp3.4.weight mlp3.4.bias mlp3.6.weight mlp3.6.bias with Adam optimizer
+2022-10-02 13:06:12, INFO: Current config content is :<module 'configs.config' from '/home/baron/Research/Master/crowd_nav/configs/config.py'>
+2022-10-02 13:06:12, INFO: Using device: cpu
+2022-10-02 13:06:12, INFO: Query environment: False
+2022-10-02 13:06:12, INFO: Policy: OM-SARL w/ global state
+2022-10-02 13:06:12, INFO: human number: 5
+2022-10-02 13:06:12, INFO: Not randomize human's radius and preferred speed
+2022-10-02 13:06:12, INFO: Training simulation: circle_crossing, test simulation: circle_crossing
+2022-10-02 13:06:12, INFO: Square width: 20, circle width: 4
+2022-10-02 13:06:12, INFO: Load imitation learning trained weights.
+2022-10-02 13:06:12, INFO: Agent is invisible and has holonomic kinematic constraint
+2022-10-02 13:06:12, INFO: Lr: 0.001 for parameters mlp1.0.weight mlp1.0.bias mlp1.2.weight mlp1.2.bias mlp2.0.weight mlp2.0.bias mlp2.2.weight mlp2.2.bias attention.0.weight attention.0.bias attention.2.weight attention.2.bias attention.4.weight attention.4.bias mlp3.0.weight mlp3.0.bias mlp3.2.weight mlp3.2.bias mlp3.4.weight mlp3.4.bias mlp3.6.weight mlp3.6.bias with Adam optimizer
+2022-10-02 13:06:33, INFO: Current config content is :<module 'configs.config' from '/home/baron/Research/Master/crowd_nav/configs/config.py'>
+2022-10-02 13:06:33, INFO: Using device: cpu
+2022-10-02 13:06:33, INFO: Query environment: False
+2022-10-02 13:06:33, INFO: Policy: OM-SARL w/ global state
+2022-10-02 13:06:33, INFO: human number: 5
+2022-10-02 13:06:33, INFO: Not randomize human's radius and preferred speed
+2022-10-02 13:06:33, INFO: Training simulation: circle_crossing, test simulation: circle_crossing
+2022-10-02 13:06:33, INFO: Square width: 20, circle width: 4
+2022-10-02 13:06:33, INFO: Load imitation learning trained weights.
+2022-10-02 13:06:33, INFO: Agent is invisible and has holonomic kinematic constraint
+2022-10-02 13:06:33, INFO: Lr: 0.001 for parameters mlp1.0.weight mlp1.0.bias mlp1.2.weight mlp1.2.bias mlp2.0.weight mlp2.0.bias mlp2.2.weight mlp2.2.bias attention.0.weight attention.0.bias attention.2.weight attention.2.bias attention.4.weight attention.4.bias mlp3.0.weight mlp3.0.bias mlp3.2.weight mlp3.2.bias mlp3.4.weight mlp3.4.bias mlp3.6.weight mlp3.6.bias with Adam optimizer
+2022-10-02 13:06:59, INFO: Current config content is :<module 'configs.config' from '/home/baron/Research/Master/crowd_nav/configs/config.py'>
+2022-10-02 13:06:59, INFO: Using device: cpu
+2022-10-02 13:06:59, INFO: Query environment: False
+2022-10-02 13:06:59, INFO: Policy: OM-SARL w/ global state
+2022-10-02 13:06:59, INFO: human number: 5
+2022-10-02 13:06:59, INFO: Not randomize human's radius and preferred speed
+2022-10-02 13:06:59, INFO: Training simulation: circle_crossing, test simulation: circle_crossing
+2022-10-02 13:06:59, INFO: Square width: 20, circle width: 4
+2022-10-02 13:06:59, INFO: Load imitation learning trained weights.
+2022-10-02 13:06:59, INFO: Agent is invisible and has holonomic kinematic constraint
+2022-10-02 13:06:59, INFO: Lr: 0.001 for parameters mlp1.0.weight mlp1.0.bias mlp1.2.weight mlp1.2.bias mlp2.0.weight mlp2.0.bias mlp2.2.weight mlp2.2.bias attention.0.weight attention.0.bias attention.2.weight attention.2.bias attention.4.weight attention.4.bias mlp3.0.weight mlp3.0.bias mlp3.2.weight mlp3.2.bias mlp3.4.weight mlp3.4.bias mlp3.6.weight mlp3.6.bias with Adam optimizer
+2022-10-02 13:09:48, INFO: Current config content is :<module 'configs.config' from '/home/baron/Research/Master/crowd_nav/configs/config.py'>
+2022-10-02 13:09:48, INFO: Using device: cpu
+2022-10-02 13:09:48, INFO: Query environment: False
+2022-10-02 13:09:48, INFO: Policy: OM-SARL w/ global state
+2022-10-02 13:09:48, INFO: human number: 5
+2022-10-02 13:09:48, INFO: Not randomize human's radius and preferred speed
+2022-10-02 13:09:48, INFO: Training simulation: circle_crossing, test simulation: circle_crossing
+2022-10-02 13:09:48, INFO: Square width: 20, circle width: 4
+2022-10-02 13:09:48, INFO: Load imitation learning trained weights.
+2022-10-02 13:09:48, INFO: Agent is invisible and has holonomic kinematic constraint
+2022-10-02 13:09:48, INFO: Lr: 0.001 for parameters mlp1.0.weight mlp1.0.bias mlp1.2.weight mlp1.2.bias mlp2.0.weight mlp2.0.bias mlp2.2.weight mlp2.2.bias attention.0.weight attention.0.bias attention.2.weight attention.2.bias attention.4.weight attention.4.bias mlp3.0.weight mlp3.0.bias mlp3.2.weight mlp3.2.bias mlp3.4.weight mlp3.4.bias mlp3.6.weight mlp3.6.bias with Adam optimizer
+2022-10-02 13:15:22, INFO: Current config content is :<module 'configs.config' from '/home/baron/Research/Master/crowd_nav/configs/config.py'>
+2022-10-02 13:15:22, INFO: Using device: cpu
+2022-10-02 13:15:22, INFO: Query environment: False
+2022-10-02 13:15:22, INFO: Policy: OM-SARL w/ global state
+2022-10-02 13:15:22, INFO: human number: 5
+2022-10-02 13:15:22, INFO: Not randomize human's radius and preferred speed
+2022-10-02 13:15:22, INFO: Training simulation: circle_crossing, test simulation: circle_crossing
+2022-10-02 13:15:22, INFO: Square width: 20, circle width: 4
+2022-10-02 13:15:22, INFO: Load imitation learning trained weights.
+2022-10-02 13:15:22, INFO: Agent is invisible and has holonomic kinematic constraint
+2022-10-02 13:15:22, INFO: Lr: 0.001 for parameters mlp1.0.weight mlp1.0.bias mlp1.2.weight mlp1.2.bias mlp2.0.weight mlp2.0.bias mlp2.2.weight mlp2.2.bias attention.0.weight attention.0.bias attention.2.weight attention.2.bias attention.4.weight attention.4.bias mlp3.0.weight mlp3.0.bias mlp3.2.weight mlp3.2.bias mlp3.4.weight mlp3.4.bias mlp3.6.weight mlp3.6.bias with Adam optimizer
+2022-10-02 13:19:43, INFO: Current config content is :<module 'configs.config' from '/home/baron/Research/Master/crowd_nav/configs/config.py'>
+2022-10-02 13:19:43, INFO: Using device: cpu
+2022-10-02 13:19:43, INFO: Query environment: False
+2022-10-02 13:19:43, INFO: Policy: OM-SARL w/ global state
+2022-10-02 13:19:43, INFO: human number: 5
+2022-10-02 13:19:43, INFO: Not randomize human's radius and preferred speed
+2022-10-02 13:19:43, INFO: Training simulation: circle_crossing, test simulation: circle_crossing
+2022-10-02 13:19:43, INFO: Square width: 20, circle width: 4
+2022-10-02 13:19:43, INFO: Load imitation learning trained weights.
+2022-10-02 13:19:43, INFO: Agent is invisible and has holonomic kinematic constraint
+2022-10-02 13:19:43, INFO: Lr: 0.001 for parameters mlp1.0.weight mlp1.0.bias mlp1.2.weight mlp1.2.bias mlp2.0.weight mlp2.0.bias mlp2.2.weight mlp2.2.bias attention.0.weight attention.0.bias attention.2.weight attention.2.bias attention.4.weight attention.4.bias mlp3.0.weight mlp3.0.bias mlp3.2.weight mlp3.2.bias mlp3.4.weight mlp3.4.bias mlp3.6.weight mlp3.6.bias with Adam optimizer
+2022-10-02 13:27:32, INFO: Current config content is :<module 'configs.config' from '/home/baron/Research/Master/crowd_nav/configs/config.py'>
+2022-10-02 13:27:32, INFO: Using device: cpu
+2022-10-02 13:27:32, INFO: Query environment: False
+2022-10-02 13:27:32, INFO: Policy: OM-SARL w/ global state
+2022-10-02 13:27:32, INFO: human number: 5
+2022-10-02 13:27:32, INFO: Not randomize human's radius and preferred speed
+2022-10-02 13:27:32, INFO: Training simulation: circle_crossing, test simulation: circle_crossing
+2022-10-02 13:27:32, INFO: Square width: 20, circle width: 4
+2022-10-02 13:27:32, INFO: Load imitation learning trained weights.
+2022-10-02 13:27:32, INFO: Agent is invisible and has holonomic kinematic constraint
+2022-10-02 13:27:32, INFO: Lr: 0.001 for parameters mlp1.0.weight mlp1.0.bias mlp1.2.weight mlp1.2.bias mlp2.0.weight mlp2.0.bias mlp2.2.weight mlp2.2.bias attention.0.weight attention.0.bias attention.2.weight attention.2.bias attention.4.weight attention.4.bias mlp3.0.weight mlp3.0.bias mlp3.2.weight mlp3.2.bias mlp3.4.weight mlp3.4.bias mlp3.6.weight mlp3.6.bias with Adam optimizer
+2022-10-02 13:29:59, INFO: Current config content is :<module 'configs.config' from '/home/baron/Research/Master/crowd_nav/configs/config.py'>
+2022-10-02 13:29:59, INFO: Using device: cpu
+2022-10-02 13:29:59, INFO: Query environment: False
+2022-10-02 13:29:59, INFO: Policy: OM-SARL w/ global state
+2022-10-02 13:29:59, INFO: human number: 5
+2022-10-02 13:29:59, INFO: Not randomize human's radius and preferred speed
+2022-10-02 13:29:59, INFO: Training simulation: circle_crossing, test simulation: circle_crossing
+2022-10-02 13:29:59, INFO: Square width: 20, circle width: 4
+2022-10-02 13:29:59, INFO: Load imitation learning trained weights.
+2022-10-02 13:29:59, INFO: Agent is invisible and has holonomic kinematic constraint
+2022-10-02 13:29:59, INFO: Lr: 0.001 for parameters mlp1.0.weight mlp1.0.bias mlp1.2.weight mlp1.2.bias mlp2.0.weight mlp2.0.bias mlp2.2.weight mlp2.2.bias attention.0.weight attention.0.bias attention.2.weight attention.2.bias attention.4.weight attention.4.bias mlp3.0.weight mlp3.0.bias mlp3.2.weight mlp3.2.bias mlp3.4.weight mlp3.4.bias mlp3.6.weight mlp3.6.bias with Adam optimizer
+2022-10-02 13:30:44, INFO: Current config content is :<module 'configs.config' from '/home/baron/Research/Master/crowd_nav/configs/config.py'>
+2022-10-02 13:30:44, INFO: Using device: cpu
+2022-10-02 13:30:44, INFO: Query environment: False
+2022-10-02 13:30:44, INFO: Policy: OM-SARL w/ global state
+2022-10-02 13:30:44, INFO: human number: 5
+2022-10-02 13:30:44, INFO: Not randomize human's radius and preferred speed
+2022-10-02 13:30:44, INFO: Training simulation: circle_crossing, test simulation: circle_crossing
+2022-10-02 13:30:44, INFO: Square width: 20, circle width: 4
+2022-10-02 13:30:44, INFO: Load imitation learning trained weights.
+2022-10-02 13:30:44, INFO: Agent is invisible and has holonomic kinematic constraint
+2022-10-02 13:30:44, INFO: Lr: 0.001 for parameters mlp1.0.weight mlp1.0.bias mlp1.2.weight mlp1.2.bias mlp2.0.weight mlp2.0.bias mlp2.2.weight mlp2.2.bias attention.0.weight attention.0.bias attention.2.weight attention.2.bias attention.4.weight attention.4.bias mlp3.0.weight mlp3.0.bias mlp3.2.weight mlp3.2.bias mlp3.4.weight mlp3.4.bias mlp3.6.weight mlp3.6.bias with Adam optimizer
+2022-10-02 13:30:58, INFO: Current config content is :<module 'configs.config' from '/home/baron/Research/Master/crowd_nav/configs/config.py'>
+2022-10-02 13:30:58, INFO: Using device: cpu
+2022-10-02 13:30:58, INFO: Query environment: False
+2022-10-02 13:30:58, INFO: Policy: OM-SARL w/ global state
+2022-10-02 13:30:58, INFO: human number: 5
+2022-10-02 13:30:58, INFO: Not randomize human's radius and preferred speed
+2022-10-02 13:30:58, INFO: Training simulation: circle_crossing, test simulation: circle_crossing
+2022-10-02 13:30:58, INFO: Square width: 20, circle width: 4
+2022-10-02 13:30:58, INFO: Load imitation learning trained weights.
+2022-10-02 13:30:58, INFO: Agent is invisible and has holonomic kinematic constraint
+2022-10-02 13:30:58, INFO: Lr: 0.001 for parameters mlp1.0.weight mlp1.0.bias mlp1.2.weight mlp1.2.bias mlp2.0.weight mlp2.0.bias mlp2.2.weight mlp2.2.bias attention.0.weight attention.0.bias attention.2.weight attention.2.bias attention.4.weight attention.4.bias mlp3.0.weight mlp3.0.bias mlp3.2.weight mlp3.2.bias mlp3.4.weight mlp3.4.bias mlp3.6.weight mlp3.6.bias with Adam optimizer
+2022-10-02 13:34:23, INFO: Current config content is :<module 'configs.config' from '/home/baron/Research/Master/crowd_nav/configs/config.py'>
+2022-10-02 13:34:23, INFO: Using device: cpu
+2022-10-02 13:34:23, INFO: Query environment: False
+2022-10-02 13:34:23, INFO: Policy: OM-SARL w/ global state
+2022-10-02 13:34:23, INFO: human number: 5
+2022-10-02 13:34:23, INFO: Not randomize human's radius and preferred speed
+2022-10-02 13:34:23, INFO: Training simulation: circle_crossing, test simulation: circle_crossing
+2022-10-02 13:34:23, INFO: Square width: 20, circle width: 4
+2022-10-02 13:34:23, INFO: Load imitation learning trained weights.
+2022-10-02 13:34:23, INFO: Agent is invisible and has holonomic kinematic constraint
+2022-10-02 13:34:23, INFO: Lr: 0.001 for parameters mlp1.0.weight mlp1.0.bias mlp1.2.weight mlp1.2.bias mlp2.0.weight mlp2.0.bias mlp2.2.weight mlp2.2.bias attention.0.weight attention.0.bias attention.2.weight attention.2.bias attention.4.weight attention.4.bias mlp3.0.weight mlp3.0.bias mlp3.2.weight mlp3.2.bias mlp3.4.weight mlp3.4.bias mlp3.6.weight mlp3.6.bias with Adam optimizer
+2022-10-02 13:39:57, INFO: Current config content is :<module 'configs.config' from '/home/baron/Research/Master/crowd_nav/configs/config.py'>
+2022-10-02 13:39:57, INFO: Using device: cpu
+2022-10-02 13:39:57, INFO: Query environment: False
+2022-10-02 13:39:57, INFO: Policy: OM-SARL w/ global state
+2022-10-02 13:39:57, INFO: human number: 5
+2022-10-02 13:39:57, INFO: Not randomize human's radius and preferred speed
+2022-10-02 13:39:57, INFO: Training simulation: circle_crossing, test simulation: circle_crossing
+2022-10-02 13:39:57, INFO: Square width: 20, circle width: 4
+2022-10-02 13:39:57, INFO: Load imitation learning trained weights.
+2022-10-02 13:39:57, INFO: Agent is invisible and has holonomic kinematic constraint
+2022-10-02 13:39:57, INFO: Lr: 0.001 for parameters mlp1.0.weight mlp1.0.bias mlp1.2.weight mlp1.2.bias mlp2.0.weight mlp2.0.bias mlp2.2.weight mlp2.2.bias attention.0.weight attention.0.bias attention.2.weight attention.2.bias attention.4.weight attention.4.bias mlp3.0.weight mlp3.0.bias mlp3.2.weight mlp3.2.bias mlp3.4.weight mlp3.4.bias mlp3.6.weight mlp3.6.bias with Adam optimizer
+2022-10-02 13:44:33, INFO: Current config content is :<module 'configs.config' from '/home/baron/Research/Master/crowd_nav/configs/config.py'>
+2022-10-02 13:44:33, INFO: Using device: cpu
+2022-10-02 13:44:33, INFO: Query environment: False
+2022-10-02 13:44:33, INFO: Policy: OM-SARL w/ global state
+2022-10-02 13:44:33, INFO: human number: 5
+2022-10-02 13:44:33, INFO: Not randomize human's radius and preferred speed
+2022-10-02 13:44:33, INFO: Training simulation: circle_crossing, test simulation: circle_crossing
+2022-10-02 13:44:33, INFO: Square width: 20, circle width: 4
+2022-10-02 13:44:33, INFO: Load imitation learning trained weights.
+2022-10-02 13:44:33, INFO: Agent is invisible and has holonomic kinematic constraint
+2022-10-02 13:44:33, INFO: Lr: 0.001 for parameters mlp1.0.weight mlp1.0.bias mlp1.2.weight mlp1.2.bias mlp2.0.weight mlp2.0.bias mlp2.2.weight mlp2.2.bias attention.0.weight attention.0.bias attention.2.weight attention.2.bias attention.4.weight attention.4.bias mlp3.0.weight mlp3.0.bias mlp3.2.weight mlp3.2.bias mlp3.4.weight mlp3.4.bias mlp3.6.weight mlp3.6.bias with Adam optimizer
+2022-10-02 13:45:15, INFO: Current config content is :<module 'configs.config' from '/home/baron/Research/Master/crowd_nav/configs/config.py'>
+2022-10-02 13:45:15, INFO: Using device: cpu
+2022-10-02 13:45:15, INFO: Query environment: False
+2022-10-02 13:45:15, INFO: Policy: OM-SARL w/ global state
+2022-10-02 13:45:15, INFO: human number: 5
+2022-10-02 13:45:15, INFO: Not randomize human's radius and preferred speed
+2022-10-02 13:45:15, INFO: Training simulation: circle_crossing, test simulation: circle_crossing
+2022-10-02 13:45:15, INFO: Square width: 20, circle width: 4
+2022-10-02 13:45:15, INFO: Load imitation learning trained weights.
+2022-10-02 13:45:15, INFO: Agent is invisible and has holonomic kinematic constraint
+2022-10-02 13:45:15, INFO: Lr: 0.001 for parameters mlp1.0.weight mlp1.0.bias mlp1.2.weight mlp1.2.bias mlp2.0.weight mlp2.0.bias mlp2.2.weight mlp2.2.bias attention.0.weight attention.0.bias attention.2.weight attention.2.bias attention.4.weight attention.4.bias mlp3.0.weight mlp3.0.bias mlp3.2.weight mlp3.2.bias mlp3.4.weight mlp3.4.bias mlp3.6.weight mlp3.6.bias with Adam optimizer
+2022-10-02 13:49:38, INFO: Current config content is :<module 'configs.config' from '/home/baron/Research/Master/crowd_nav/configs/config.py'>
+2022-10-02 13:49:38, INFO: Using device: cpu
+2022-10-02 13:49:38, INFO: Query environment: False
+2022-10-02 13:49:38, INFO: Policy: OM-SARL w/ global state
+2022-10-02 13:49:38, INFO: human number: 5
+2022-10-02 13:49:38, INFO: Not randomize human's radius and preferred speed
+2022-10-02 13:49:38, INFO: Training simulation: circle_crossing, test simulation: circle_crossing
+2022-10-02 13:49:38, INFO: Square width: 20, circle width: 4
+2022-10-02 13:49:38, INFO: Load imitation learning trained weights.
+2022-10-02 13:49:38, INFO: Agent is invisible and has holonomic kinematic constraint
+2022-10-02 13:49:38, INFO: Lr: 0.001 for parameters mlp1.0.weight mlp1.0.bias mlp1.2.weight mlp1.2.bias mlp2.0.weight mlp2.0.bias mlp2.2.weight mlp2.2.bias attention.0.weight attention.0.bias attention.2.weight attention.2.bias attention.4.weight attention.4.bias mlp3.0.weight mlp3.0.bias mlp3.2.weight mlp3.2.bias mlp3.4.weight mlp3.4.bias mlp3.6.weight mlp3.6.bias with Adam optimizer
+2022-10-02 13:49:42, INFO: TRAIN in episode 0 has success rate: 1.00, collision rate: 0.00, nav time: 10.25, total reward: 0.3128, average return: 0.6052
+2022-10-02 13:50:03, INFO: Current config content is :<module 'configs.config' from '/home/baron/Research/Master/crowd_nav/configs/config.py'>
+2022-10-02 13:50:03, INFO: Using device: cpu
+2022-10-02 13:50:03, INFO: Query environment: False
+2022-10-02 13:50:03, INFO: Policy: OM-SARL w/ global state
+2022-10-02 13:50:03, INFO: human number: 5
+2022-10-02 13:50:03, INFO: Not randomize human's radius and preferred speed
+2022-10-02 13:50:03, INFO: Training simulation: circle_crossing, test simulation: circle_crossing
+2022-10-02 13:50:03, INFO: Square width: 20, circle width: 4
+2022-10-02 13:50:03, INFO: Load imitation learning trained weights.
+2022-10-02 13:50:03, INFO: Agent is invisible and has holonomic kinematic constraint
+2022-10-02 13:50:03, INFO: Lr: 0.001 for parameters mlp1.0.weight mlp1.0.bias mlp1.2.weight mlp1.2.bias mlp2.0.weight mlp2.0.bias mlp2.2.weight mlp2.2.bias attention.0.weight attention.0.bias attention.2.weight attention.2.bias attention.4.weight attention.4.bias mlp3.0.weight mlp3.0.bias mlp3.2.weight mlp3.2.bias mlp3.4.weight mlp3.4.bias mlp3.6.weight mlp3.6.bias with Adam optimizer
+2022-10-02 13:50:37, INFO: TRAIN in episode 0 has success rate: 1.00, collision rate: 0.00, nav time: 10.25, total reward: 0.3128, average return: 0.6052
+2022-10-02 13:51:10, INFO: Average loss : 6.46E-06
+2022-10-02 13:51:11, INFO: TRAIN in episode 1 has success rate: 0.00, collision rate: 1.00, nav time: 30.00, total reward: -0.1556, average return: -0.1993
+2022-10-02 13:52:14, INFO: Average loss : 1.28E-05
+2022-10-02 13:52:15, INFO: TRAIN in episode 2 has success rate: 0.00, collision rate: 1.00, nav time: 30.00, total reward: -0.1932, average return: -0.2366
+2022-10-02 14:07:27, INFO: Current config content is :<module 'configs.config' from '/home/baron/Research/Master/crowd_nav/configs/config.py'>
+2022-10-02 14:07:27, INFO: Using device: cpu
+2022-10-02 14:07:27, INFO: Query environment: False
+2022-10-02 14:07:28, INFO: Policy: OM-SARL w/ global state
+2022-10-02 14:07:28, INFO: human number: 5
+2022-10-02 14:07:28, INFO: Not randomize human's radius and preferred speed
+2022-10-02 14:07:28, INFO: Training simulation: circle_crossing, test simulation: circle_crossing
+2022-10-02 14:07:28, INFO: Square width: 20, circle width: 4
+2022-10-02 14:07:28, INFO: Load imitation learning trained weights.
+2022-10-02 14:07:28, INFO: Agent is invisible and has holonomic kinematic constraint
+2022-10-02 14:07:28, INFO: Lr: 0.001 for parameters mlp1.0.weight mlp1.0.bias mlp1.2.weight mlp1.2.bias mlp2.0.weight mlp2.0.bias mlp2.2.weight mlp2.2.bias attention.0.weight attention.0.bias attention.2.weight attention.2.bias attention.4.weight attention.4.bias mlp3.0.weight mlp3.0.bias mlp3.2.weight mlp3.2.bias mlp3.4.weight mlp3.4.bias mlp3.6.weight mlp3.6.bias with Adam optimizer
+2022-10-02 14:07:28, INFO: Evaluate the model instantly after imitation learning on the validation cases
+2022-10-02 14:07:50, INFO: Current config content is :<module 'configs.config' from '/home/baron/Research/Master/crowd_nav/configs/config.py'>
+2022-10-02 14:07:50, INFO: Using device: cpu
+2022-10-02 14:07:50, INFO: Query environment: False
+2022-10-02 14:07:50, INFO: Policy: OM-SARL w/ global state
+2022-10-02 14:07:50, INFO: human number: 5
+2022-10-02 14:07:50, INFO: Not randomize human's radius and preferred speed
+2022-10-02 14:07:50, INFO: Training simulation: circle_crossing, test simulation: circle_crossing
+2022-10-02 14:07:50, INFO: Square width: 20, circle width: 4
+2022-10-02 14:07:50, INFO: Load imitation learning trained weights.
+2022-10-02 14:07:50, INFO: Agent is invisible and has holonomic kinematic constraint
+2022-10-02 14:07:50, INFO: Lr: 0.001 for parameters mlp1.0.weight mlp1.0.bias mlp1.2.weight mlp1.2.bias mlp2.0.weight mlp2.0.bias mlp2.2.weight mlp2.2.bias attention.0.weight attention.0.bias attention.2.weight attention.2.bias attention.4.weight attention.4.bias mlp3.0.weight mlp3.0.bias mlp3.2.weight mlp3.2.bias mlp3.4.weight mlp3.4.bias mlp3.6.weight mlp3.6.bias with Adam optimizer
