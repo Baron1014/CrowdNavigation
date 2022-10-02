@@ -3,6 +3,7 @@ import logging
 import numpy as np
 from crowd_sim.envs.utils.action import ActionRot, ActionXY
 from crowd_nav.policy.cadrl import CADRL
+from crowd_sim.envs.utils.utils import getCloestEdgeDist
 
 
 class MultiHumanRL(CADRL):
@@ -75,7 +76,8 @@ class MultiHumanRL(CADRL):
         dmin = float('inf')
         collision = False
         for i, human in enumerate(humans):
-            dist = np.linalg.norm((nav.px - human.px, nav.py - human.py)) - nav.radius - human.radius
+            dist = getCloestEdgeDist(nav.px, nav.py, human.px, human.py, nav.width/2, nav.length/2) - human.radius
+            # dist = np.linalg.norm((nav.px - human.px, nav.py - human.py)) - nav.radius - human.radius
             if dist < 0:
                 collision = True
                 break
@@ -83,7 +85,9 @@ class MultiHumanRL(CADRL):
                 dmin = dist
 
         # check if reaching the goal
-        reaching_goal = np.linalg.norm((nav.px - nav.gx, nav.py - nav.gy)) < nav.radius
+        # reaching_goal = np.linalg.norm((nav.px - nav.gx, nav.py - nav.gy)) < nav.radius
+        goal_delta_x, goal_delta_y = nav.px - nav.gx, nav.py - nav.gy
+        reaching_goal = abs(goal_delta_x) < nav.width/2 and abs(goal_delta_y) < nav.length/2
         if collision:
             reward = -0.25
         elif reaching_goal:
