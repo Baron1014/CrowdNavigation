@@ -161,6 +161,11 @@ class BaseTrainConfig(object):
     train.checkpoint_interval = 1000
 
     train.train_with_pretend_batch = False
+    train.output_dir = 'data/dummy'  # the saving directory for train.py
+    train.overwrite = True  # whether to overwrite the output directory in training
+    train.resume = False  # resume training from an existing checkpoint or not
+    train.num_processes = 12 # how many training CPU processes to use
+    train.num_threads = 1  # number of threads used for intraop parallelism on CPU
 
     wan = Config()
     wan.entity = "baron"

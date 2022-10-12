@@ -17,58 +17,60 @@ from pytorchBaselines.a2c_ppo_acktr.model import Policy
 from pytorchBaselines.a2c_ppo_acktr.storage import RolloutStorage
 
 
-from crowd_nav.configs.config import Config
+from crowd_nav.configs.srnn import EnvConfig, TrainConfig, PolicyConfig
 from crowd_sim import *
 
 def main():
-	config = Config()
+	training_config = TrainConfig()
 
 	# save policy to output_dir
-	if os.path.exists(config.training.output_dir) and config.training.overwrite: # if I want to overwrite the directory
-		shutil.rmtree(config.training.output_dir)  # delete an entire directory tree
+	if os.path.exists(training_config.train.output_dir) and training_config.train.overwrite: # if I want to overwrite the directory
+		shutil.rmtree(training_config.train.output_dir)  # delete an entire directory tree
 
-	if not os.path.exists(config.training.output_dir):
-		os.makedirs(config.training.output_dir)
+	if not os.path.exists(training_config.train.output_dir):
+		os.makedirs(training_config.train.output_dir)
 
-	shutil.copytree('crowd_nav/configs', os.path.join(config.training.output_dir, 'configs'))
+	shutil.copytree('crowd_nav/configs', os.path.join(training_config.train.output_dir, 'configs'))
 
 
 	# configure logging
-	log_file = os.path.join(config.training.output_dir, 'output.log')
-	mode = 'a' if config.training.resume else 'w'
+	log_file = os.path.join(training_config.train.output_dir, 'output.log')
+	mode = 'a' if training_config.train.resume else 'w'
 	file_handler = logging.FileHandler(log_file, mode=mode)
 	stdout_handler = logging.StreamHandler(sys.stdout)
 	level = logging.INFO
 	logging.basicConfig(level=level, handlers=[stdout_handler, file_handler],
 						format='%(asctime)s, %(levelname)s: %(message)s', datefmt="%Y-%m-%d %H:%M:%S")
 
+	env_config = EnvConfig()
+	torch.manual_seed(env_config.env.seed)
+	torch.cuda.manual_seed_all(env_config.env.seed)
 
-	torch.manual_seed(config.env.seed)
-	torch.cuda.manual_seed_all(config.env.seed)
-	if config.training.cuda and torch.cuda.is_available():
-		if config.training.cuda_deterministic:
-			# reproducible but slower
-			torch.backends.cudnn.benchmark = False
-			torch.backends.cudnn.deterministic = True
-		else:
-			# not reproducible but faster
-			torch.backends.cudnn.benchmark = True
-			torch.backends.cudnn.deterministic = False
+	device = torch.device("cuda" if  torch.cuda.is_available() else "cpu")
+
+	# if training_config.training.cuda and torch.cuda.is_available():
+	# 	if config.training.cuda_deterministic:
+	# 		# reproducible but slower
+	# 		torch.backends.cudnn.benchmark = False
+	# 		torch.backends.cudnn.deterministic = True
+	# 	else:
+	# 		# not reproducible but faster
+	# 		torch.backends.cudnn.benchmark = True
+	# 		torch.backends.cudnn.deterministic = False
 
 
-
-	torch.set_num_threads(config.training.num_threads)
-	device = torch.device("cuda" if config.training.cuda and torch.cuda.is_available() else "cpu")
+	torch.set_num_threads(training_config.train.num_threads)
+	
 
 
 	logging.info('Create other envs with new settings')
 
 
 	# For fastest training: use GRU
-	env_name = config.env.env_name
+	env_name = env_config.env.env_name
 	recurrent_cell = 'GRU'
 
-	if config.sim.render:
+	if env_config.sim.render:
 		fig, ax = plt.subplots(figsize=(7, 7))
 		ax.set_xlim(-6, 6)
 		ax.set_ylim(-6, 6)
@@ -80,21 +82,21 @@ def main():
 		ax = None
 
 
-	if config.sim.render:
-		config.training.num_processes = 1
-		config.ppo.num_mini_batch = 1
+	if env_config.sim.render:
+		training_config.train.num_processes = 1
+		env_config.ppo.num_mini_batch = 1
 
 	# create a manager env
-	envs = make_vec_envs(env_name, config.env.seed, config.training.num_processes,
-						 config.reward.gamma, None, device, False, config=config, ax=ax)
+	envs = make_vec_envs(env_name, env_config.env.seed, training_config.train.num_processes,
+						 env_config.reward.gamma, None, device, False, config=env_config, ax=ax)
 
 
 
 	actor_critic = Policy(
 		envs.observation_space.spaces, # pass the Dict into policy to parse
 		envs.action_space,
-		base_kwargs=config,
-		base=config.robot.policy)
+		base_kwargs=env_config,
+		base=env_config.robot.policy)
 
 	rollouts = RolloutStorage(config.ppo.num_steps,
 							  config.training.num_processes,

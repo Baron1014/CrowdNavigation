@@ -39,10 +39,10 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets, config=None, envNu
         else:
             env = gym.make(env_id)
 
-        is_atari = hasattr(gym.envs, 'atari') and isinstance(
-            env.unwrapped, gym.envs.atari.atari_env.AtariEnv)
-        if is_atari:
-            env = make_atari(env_id)
+        # is_atari = hasattr(gym.envs, 'atari') and isinstance(
+        #     env.unwrapped, gym.envs.atari.atari_env.AtariEnv)
+        # if is_atari:
+        #     env = make_atari(env_id)
 
         env.configure(config)
 
@@ -72,10 +72,10 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets, config=None, envNu
         print(env)
 
         if isinstance(env.observation_space, Box):
-            if is_atari:
-                if len(env.observation_space.shape) == 3:
-                    env = wrap_deepmind(env)
-            elif len(env.observation_space.shape) == 3:
+            # if is_atari:
+            #     if len(env.observation_space.shape) == 3:
+            #         env = wrap_deepmind(env)
+            if len(env.observation_space.shape) == 3:
                 raise NotImplementedError(
                     "CNN models work only for atari,\n"
                     "please use a custom wrapper for a custom pixel input env.\n"

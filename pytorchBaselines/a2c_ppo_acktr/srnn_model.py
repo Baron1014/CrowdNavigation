@@ -335,7 +335,7 @@ class SRNN(nn.Module):
         self.human_num = config.sim.human_num
 
         self.seq_length = config.ppo.num_steps
-        self.nenv = config.training.num_processes
+        self.nenv = config.train.num_processes
         self.nminibatch = config.ppo.num_mini_batch
 
         # Store required sizes

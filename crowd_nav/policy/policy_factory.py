@@ -4,6 +4,7 @@ from crowd_nav.policy.sarl import SARL
 from crowd_nav.policy.cadrl import CADRL
 from crowd_nav.policy.lstm_rl import LstmRL
 
+
 policy_factory['model_predictive_rl'] = ModelPredictiveRL
 policy_factory['sarl'] = SARL
 policy_factory['cadrl'] = CADRL

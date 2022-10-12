@@ -65,6 +65,7 @@ class ORCA(Policy):
         self.radius = 0.3
         self.max_speed = 1
         self.sim = None
+        self.time_step = None
 
     def configure(self, config):
         return
