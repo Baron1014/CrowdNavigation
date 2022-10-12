@@ -229,7 +229,7 @@ if __name__ == '__main__':
     parser.add_argument('--debug', default=False, action='store_true')
     parser.add_argument('--randomseed', type=int, default=17)
     parser.add_argument('--wandb', default=False, action='store_true')
-    parser.add_argument('--config', type=str, default='configs/gcn.py')
+    parser.add_argument('--policy', type=str, default='lstm_rl')
 
     sys_args = parser.parse_args()
 
