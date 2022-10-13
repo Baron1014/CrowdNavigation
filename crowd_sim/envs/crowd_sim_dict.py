@@ -675,3 +675,46 @@ class CrowdSimDict(CrowdSim):
             reward = reward + r_spin + r_back
 
         return reward, done, episode_info
+
+    # Update the humans' end goals in the environment
+    # Produces valid end goals for each human
+    def update_human_goals_randomly(self):
+        # Update humans' goals randomly
+        for human in self.humans:
+            # if human.isObstacle or human.v_pref == 0:
+            #     continue
+            if np.random.random() <= self.goal_change_chance:
+                if not self.group_human: # to improve the runtime
+                    humans_copy = []
+                    for h in self.humans:
+                        if h != human:
+                            humans_copy.append(h)
+
+
+                # Produce valid goal for human in case of circle setting
+                while True:
+                    angle = np.random.random() * np.pi * 2
+                    # add some noise to simulate all the possible cases robot could meet with human
+                    v_pref = 1.0 if human.v_pref == 0 else human.v_pref
+                    gx_noise = (np.random.random() - 0.5) * v_pref
+                    gy_noise = (np.random.random() - 0.5) * v_pref
+                    gx = self.circle_radius * np.cos(angle) + gx_noise
+                    gy = self.circle_radius * np.sin(angle) + gy_noise
+                    collide = False
+
+                    if self.group_human:
+                        collide = self.check_collision_group((gx, gy), human.radius)
+                    else:
+                        for agent in [self.robot] + humans_copy:
+                            min_dist = human.radius + agent.radius + self.discomfort_dist
+                            if norm((gx - agent.px, gy - agent.py)) < min_dist or \
+                                    norm((gx - agent.gx, gy - agent.gy)) < min_dist:
+                                collide = True
+                                break
+                    if not collide:
+                        break
+
+                # Give human new goal
+                human.gx = gx
+                human.gy = gy
+        return
