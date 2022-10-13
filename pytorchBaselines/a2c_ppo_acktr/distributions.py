@@ -35,7 +35,7 @@ class FixedCategorical(torch.distributions.Categorical):
 # Normal
 class FixedNormal(torch.distributions.Normal):
     def log_probs(self, actions):
-        return super().log_prob(actions).sum(-1, keepdim=True)
+        return super().log_prob(actions).sum(-1, keepdim=True) # loss: log p(a|pi^theta(s))
 
     def entrop(self):
         return super.entropy().sum(-1)
