@@ -50,15 +50,19 @@ def make_env(env_id, seed, rank, log_dir, allow_early_resets, config=None, envNu
         # environment.render_axis = ax
         env.thisSeed = envSeed
         env.nenv = envNum
-        if envNum > 1:
-            env.phase = 'train'
-        else:
-            env.phase = 'test'
+        # if envNum > 1:
+        #     env.phase = 'train'
+        # else:
+        #     env.phase = 'test'
 
         if ax:
             env.render_axis = ax
             if test_case >= 0:
                 env.test_case = test_case
+                env.phase = 'test'
+            else:
+                env.test_case = 0
+                env.phase = 'train'
         env.seed(seed + rank)
 
         if str(env.__class__.__name__).find('TimeLimit') >= 0:

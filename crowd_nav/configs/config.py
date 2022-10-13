@@ -48,9 +48,13 @@ class BaseEnvConfig(object):
     robot = Config()
     robot.visible = False
     robot.policy = 'none'
-    # robot.radius = 0.3
-    robot.width = 0.5
-    robot.length = 0.8
+    robot.radius = 0.3
+    if robot.radius is None:
+        robot.width = 0.5
+        robot.length = 0.8
+    else:
+        robot.width = None
+        robot.length = None
     robot.v_pref = 1
     robot.sensor = 'coordinates'
 
@@ -159,13 +163,6 @@ class BaseTrainConfig(object):
     train.epsilon_end = 0.1
     train.epsilon_decay = 4000
     train.checkpoint_interval = 1000
-
-    train.train_with_pretend_batch = False
-    train.output_dir = 'data/dummy'  # the saving directory for train.py
-    train.overwrite = True  # whether to overwrite the output directory in training
-    train.resume = False  # resume training from an existing checkpoint or not
-    train.num_processes = 12 # how many training CPU processes to use
-    train.num_threads = 1  # number of threads used for intraop parallelism on CPU
 
     wan = Config()
     wan.entity = "baron"

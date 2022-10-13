@@ -1,6 +1,6 @@
 from crowd_sim.envs.utils.agent import Agent
-from crowd_sim.envs.utils.state import JointState
-
+from crowd_sim.envs.utils.state import HumanState, JointState
+from crowd_sim.envs.utils.robot import Robot
 
 class Human(Agent):
     def __init__(self, config, section, static=False):

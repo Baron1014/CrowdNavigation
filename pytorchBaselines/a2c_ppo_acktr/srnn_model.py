@@ -320,7 +320,7 @@ class SRNN(nn.Module):
     """
     Class representing the SRNN model
     """
-    def __init__(self, obs_space_dict, config, infer=False):
+    def __init__(self, obs_space_dict, config, device, infer=False):
         """
         Initializer function
         params:
@@ -330,49 +330,12 @@ class SRNN(nn.Module):
         super(SRNN, self).__init__()
         self.infer = infer
         self.is_recurrent = True
-        self.config=config
+        self.device = device
 
         self.human_num = config.sim.human_num
 
         self.seq_length = config.ppo.num_steps
-        self.nenv = config.train.num_processes
         self.nminibatch = config.ppo.num_mini_batch
-
-        # Store required sizes
-        self.human_node_rnn_size = config.SRNN.human_node_rnn_size
-        self.human_human_edge_rnn_size = config.SRNN.human_human_edge_rnn_size
-        self.output_size = config.SRNN.human_node_output_size
-
-        # Initialize the Node and Edge RNNs
-        self.humanNodeRNN = HumanNodeRNN(config)
-        self.humanhumanEdgeRNN_spatial = HumanHumanEdgeRNN(config)
-        self.humanhumanEdgeRNN_temporal = HumanHumanEdgeRNN(config)
-
-        # Initialize attention module
-        self.attn = EdgeAttention(config)
-
-        init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
-                               constant_(x, 0), np.sqrt(2))
-
-        num_inputs = hidden_size = self.output_size
-
-        self.actor = nn.Sequential(
-            init_(nn.Linear(num_inputs, hidden_size)), nn.Tanh(),
-            init_(nn.Linear(hidden_size, hidden_size)), nn.Tanh())
-
-        self.critic = nn.Sequential(
-            init_(nn.Linear(num_inputs, hidden_size)), nn.Tanh(),
-            init_(nn.Linear(hidden_size, hidden_size)), nn.Tanh())
-
-
-        self.critic_linear = init_(nn.Linear(hidden_size, 1))
-
-        self.robot_linear = init_(nn.Linear(7, 3))
-        self.human_node_final_linear=init_(nn.Linear(self.output_size,2))
-
-        self.num_edges = self.human_num + 1 # number of spatial edges + number of temporal edges
-        self.temporal_edges = [0]
-        self.spatial_edges = np.arange(1, self.human_num+1)
 
 
     def forward(self, inputs, rnn_hxs, masks, infer=False):
@@ -394,7 +357,7 @@ class SRNN(nn.Module):
         hidden_states_edge_RNNs = reshapeT(rnn_hxs['human_human_edge_rnn'], 1, nenv)
         masks = reshapeT(masks, seq_length, nenv)
 
-        if not self.config.training.cuda:
+        if self.device.type=='cpu':
             all_hidden_states_edge_RNNs = Variable(
                 torch.zeros(1, nenv, self.num_edges, rnn_hxs['human_human_edge_rnn'].size()[-1]).cpu())
         else:
@@ -451,8 +414,49 @@ class SRNN(nn.Module):
             return self.critic_linear(hidden_critic).squeeze(0), hidden_actor.squeeze(0), rnn_hxs
         else:
             return self.critic_linear(hidden_critic).view(-1, 1), hidden_actor.view(-1, self.output_size), rnn_hxs
+    
+    def configure(self, policy_config, train_config):
+        self.config=policy_config
+        self.nenv = train_config.train.num_processes
+        # Store required sizes
+        self.human_node_rnn_size = policy_config.SRNN.human_node_rnn_size
+        self.human_human_edge_rnn_size = policy_config.SRNN.human_human_edge_rnn_size
+        self.output_size = policy_config.SRNN.human_node_output_size
+
+        # Initialize the Node and Edge RNNs
+        self.humanNodeRNN = HumanNodeRNN(policy_config)
+        self.humanhumanEdgeRNN_spatial = HumanHumanEdgeRNN(policy_config)
+        self.humanhumanEdgeRNN_temporal = HumanHumanEdgeRNN(policy_config)
+
+        # Initialize attention module
+        self.attn = EdgeAttention(policy_config)
+
+        num_inputs = hidden_size = self.output_size
+
+        init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
+                               constant_(x, 0), np.sqrt(2))
+
+        self.actor = nn.Sequential(
+            init_(nn.Linear(num_inputs, hidden_size)), nn.Tanh(),
+            init_(nn.Linear(hidden_size, hidden_size)), nn.Tanh())
+
+        self.critic = nn.Sequential(
+            init_(nn.Linear(num_inputs, hidden_size)), nn.Tanh(),
+            init_(nn.Linear(hidden_size, hidden_size)), nn.Tanh())
+
+
+        self.critic_linear = init_(nn.Linear(hidden_size, 1))
+
+        self.robot_linear = init_(nn.Linear(7, 3))
+        self.human_node_final_linear=init_(nn.Linear(self.output_size,2))
+
+        self.num_edges = self.human_num + 1 # number of spatial edges + number of temporal edges
+        self.temporal_edges = [0]
+        self.spatial_edges = np.arange(1, self.human_num+1)
 
 
 def reshapeT(T, seq_length, nenv):
     shape = T.size()[1:]
     return T.unsqueeze(0).reshape((seq_length, nenv, *shape))
+
+

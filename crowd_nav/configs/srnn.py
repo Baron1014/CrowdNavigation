@@ -89,3 +89,15 @@ class TrainConfig(BaseTrainConfig):
         self.train.freeze_state_predictor = False
         self.train.detach_state_predictor = False
         self.train.reduce_sp_update_frequency = False
+        self.train.lr = 4e-5  # learning rate (default: 7e-4)
+        self.train.eps = 1e-5  # RMSprop optimizer epsilon
+        self.train.max_grad_norm = 0.5  # max norm of gradients
+        self.train.train_with_pretend_batch = False
+        self.train.output_dir = 'data/dummy'  # the saving directory for train.py
+        self.train.overwrite = True  # whether to overwrite the output directory in training
+        self.train.resume = False  # resume training from an existing checkpoint or not
+        self.train.num_processes = 12 # how many training CPU processes to use
+        self.train.num_threads = 1  # number of threads used for intraop parallelism on CPU
+        self.train.num_env_steps = 10e6  # number of environment steps to train: 10e6 for holonomic, 20e6 for unicycle
+        self.train.use_linear_lr_decay = False  # use a linear schedule on the learning rate: True for unicycle, False for holonomic
+    

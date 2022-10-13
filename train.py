@@ -91,23 +91,24 @@ def main():
 						 env_config.reward.gamma, None, device, False, config=env_config, ax=ax)
 
 
-
+	policy_config = PolicyConfig()
 	actor_critic = Policy(
 		envs.observation_space.spaces, # pass the Dict into policy to parse
-		envs.action_space,
 		base_kwargs=env_config,
 		base=env_config.robot.policy)
+	actor_critic.base.configure(policy_config, training_config)
+	actor_critic.set_action_space(envs.action_space)
 
-	rollouts = RolloutStorage(config.ppo.num_steps,
-							  config.training.num_processes,
+	rollouts = RolloutStorage(env_config.ppo.num_steps,
+							  training_config.train.num_processes,
 							  envs.observation_space.spaces,
 							  envs.action_space,
-							  config.SRNN.human_node_rnn_size,
-							  config.SRNN.human_human_edge_rnn_size,
+							  policy_config.SRNN.human_node_rnn_size,
+							  policy_config.SRNN.human_human_edge_rnn_size,
 							  recurrent_cell_type=recurrent_cell)
 
-	if config.training.resume: #retrieve the model if resume = True
-		load_path = config.training.load_path
+	if training_config.train.resume: #retrieve the model if resume = True
+		load_path = training_config.train.load_path
 		actor_critic.load_state_dict(torch.load(load_path))
 		print("Loaded the following checkpoint:", load_path)
 
@@ -118,14 +119,14 @@ def main():
 
 	agent = algo.PPO(
 		actor_critic,
-		config.ppo.clip_param,
-		config.ppo.epoch,
-		config.ppo.num_mini_batch,
-		config.ppo.value_loss_coef,
-		config.ppo.entropy_coef,
-		lr=config.training.lr,
-		eps=config.training.eps,
-		max_grad_norm=config.training.max_grad_norm)
+		env_config.ppo.clip_param,
+		env_config.ppo.epoch,
+		env_config.ppo.num_mini_batch,
+		env_config.ppo.value_loss_coef,
+		env_config.ppo.entropy_coef,
+		lr=training_config.train.lr,
+		eps=training_config.train.eps,
+		max_grad_norm=training_config.train.max_grad_norm)
 
 
 
@@ -142,15 +143,15 @@ def main():
 
 	start = time.time()
 	num_updates = int(
-		config.training.num_env_steps) // config.ppo.num_steps // config.training.num_processes
+		training_config.train.num_env_steps) // env_config.ppo.num_steps // training_config.train.num_processes
 
 	for j in range(num_updates):
 
-		if config.training.use_linear_lr_decay:
+		if training_config.train.use_linear_lr_decay:
 			utils.update_linear_schedule(
-				agent.optimizer, j, num_updates, config.training.lr)
+				agent.optimizer, j, num_updates, training_config.train.lr)
 
-		for step in range(config.ppo.num_steps):
+		for step in range(env_config.ppo.num_steps):
 			# Sample actions
 			with torch.no_grad():
 
@@ -164,7 +165,7 @@ def main():
 					rollouts_obs, rollouts_hidden_s,
 					rollouts.masks[step])
 
-			if config.sim.render:
+			if env_config.sim.render:
 				envs.render()
 			# Obser reward and next obs
 			obs, reward, done, infos = envs.step(action)
@@ -198,17 +199,17 @@ def main():
 
 
 
-		rollouts.compute_returns(next_value, config.ppo.use_gae, config.reward.gamma,
-								 config.ppo.gae_lambda, config.training.use_proper_time_limits)
+		rollouts.compute_returns(next_value, env_config.ppo.use_gae, env_config.reward.gamma,
+								 env_config.ppo.gae_lambda, training_config.train.use_proper_time_limits)
 
 		value_loss, action_loss, dist_entropy = agent.update(rollouts)
 
 		rollouts.after_update()
 
 		# save the model for every interval-th episode or for the last epoch
-		if (j % config.training.save_interval == 0
+		if (j % training_config.train.save_interval == 0
 			or j == num_updates - 1) :
-			save_path = os.path.join(config.training.output_dir, 'checkpoints')
+			save_path = os.path.join(training_config.train.output_dir, 'checkpoints')
 			if not os.path.exists(save_path):
 				os.mkdir(save_path)
 
@@ -220,8 +221,8 @@ def main():
 
 			torch.save(actor_critic.state_dict(), os.path.join(save_path, '%.5i' % j + ".pt"))
 
-		if j % config.training.log_interval == 0 and len(episode_rewards) > 1:
-			total_num_steps = (j + 1) * config.training.num_processes * config.ppo.num_steps
+		if j % training_config.train.log_interval == 0 and len(episode_rewards) > 1:
+			total_num_steps = (j + 1) * training_config.train.num_processes * env_config.ppo.num_steps
 			end = time.time()
 			print(
 				"Updates {}, num timesteps {}, FPS {} \n Last {} training episodes: mean/median reward "
@@ -238,10 +239,10 @@ def main():
 							   'loss/policy_entropy': dist_entropy, 'loss/policy_loss': action_loss,
 							   'loss/value_loss': value_loss})
 
-			if os.path.exists(os.path.join(config.training.output_dir, 'progress.csv')) and j > 20:
-				df.to_csv(os.path.join(config.training.output_dir, 'progress.csv'), mode='a', header=False, index=False)
+			if os.path.exists(os.path.join(training_config.train.output_dir, 'progress.csv')) and j > 20:
+				df.to_csv(os.path.join(training_config.train.output_dir, 'progress.csv'), mode='a', header=False, index=False)
 			else:
-				df.to_csv(os.path.join(config.training.output_dir, 'progress.csv'), mode='w', header=True, index=False)
+				df.to_csv(os.path.join(training_config.train.output_dir, 'progress.csv'), mode='w', header=True, index=False)
 
 
 

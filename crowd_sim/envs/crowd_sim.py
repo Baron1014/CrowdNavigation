@@ -142,7 +142,7 @@ class CrowdSim(gym.Env):
             py = self.circle_radius * np.sin(angle) + py_noise
             collide = False
             for i, agent in enumerate([self.robot] + self.humans):
-                if i == 0:
+                if i == 0 and agent.radius is None:
                     agent_dist = (self.robot.width**2+self.robot.length**2)**0.5
                 else:
                     agent_dist = agent.radius

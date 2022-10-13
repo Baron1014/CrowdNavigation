@@ -7,6 +7,7 @@ from crowd_sim.envs.utils.action import ActionRot, ActionXY
 class SRNN(Policy):
 	def __init__(self, config):
 		super().__init__()
+		self.config = config
 		self.time_step = config.env.time_step # Todo: is this needed?
 		self.name = 'srnn'
 		self.trainable = True
@@ -24,7 +25,7 @@ class SRNN(Policy):
 
         """
 		# quantize the action
-		holonomic = True if self.config.action_space.kinematics == 'holonomic' else False
+		holonomic = True if self.kinematics == 'holonomic' else False
 		# clip the action
 		if holonomic:
 			act_norm = np.linalg.norm(raw_action)

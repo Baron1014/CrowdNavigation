@@ -4,7 +4,7 @@ import numpy as np
 from numpy.linalg import norm
 from crowd_sim.envs.policy.policy_factory import policy_factory
 from crowd_sim.envs.utils.action import ActionXY, ActionRot
-from crowd_sim.envs.utils.state import ObservableState, RobotState, HumanState
+from crowd_sim.envs.utils.state import ObservableState, ObservableState_noV, RobotState
 
 
 class Agent(object):
@@ -28,7 +28,14 @@ class Agent(object):
         self.vx = None
         self.vy = None
         self.theta = None
-        self.time_step = None
+        self.time_step = config.env.time_step
+        self.policy.time_step = self.time_step
+        subconfig = config.robot if section == 'robot' else config.humans
+        self.radius = subconfig.radius
+        if section == 'robot':
+            self.width = config.robot.width
+            self.length = config.robot.length
+        self.size = [self.radius]  if self.radius is not None else [self.width, self.length]
 
     def print_info(self):
         logging.info('Agent is {} and has {} kinematic constraint'.format(
@@ -68,6 +75,15 @@ class Agent(object):
 
     def get_observable_state(self):
         return ObservableState(self.px, self.py, self.vx, self.vy, self.radius)
+    
+    def get_observable_state_list(self):
+        return [self.px, self.py, self.vx, self.vy, self.radius]
+
+    def get_observable_state_noV(self):
+        return ObservableState_noV(self.px, self.py, self.radius)
+
+    def get_observable_state_list_noV(self):
+        return [self.px, self.py, self.radius]
 
     def get_next_observable_state(self, action):
         self.check_validity(action)
@@ -82,7 +98,14 @@ class Agent(object):
         return ObservableState(next_px, next_py, next_vx, next_vy, self.radius)
 
     def get_full_state(self):
-        return HumanState(self.px, self.py, self.vx, self.vy, self.radius, self.gx, self.gy, self.v_pref, self.theta)
+        return RobotState(self.px, self.py, self.vx, self.vy, self.gx, self.gy, self.v_pref, self.theta, robot_size=self.size)
+    
+    def get_full_state_list(self):
+        return [self.px, self.py, self.vx, self.vy, self.radius, self.gx, self.gy, self.v_pref, self.theta]
+
+    def get_full_state_list_noV(self):
+        return [self.px, self.py, self.radius, self.gx, self.gy, self.v_pref, self.theta]
+        # return [self.px, self.py, self.radius, self.gx, self.gy, self.v_pref]
 
     def get_position(self):
         return self.px, self.py
