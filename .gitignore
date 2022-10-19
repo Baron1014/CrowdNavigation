@@ -11,3 +11,5 @@ data/
 
 
 crowd_nav/sarl_output/__pycache__/
+
+ros/detection/__pycache__/
