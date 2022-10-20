@@ -1,13 +1,10 @@
-import numpy as np
-import cv2
-import os
 import argparse
-import matplotlib.pyplot as plt
 from vistualize import BagVis, ImgVis, VideoVis
 
 def main(sys_args):
     detector = BagVis(sys_args.bag_file)
-    detector.detect_color()
+    detector.detect_color(show='video', depth_info=True)
+    # detector.detect_depth(show='video')
 
     # file = '/data/test.png'
     # imgvis = ImgVis()
