@@ -97,7 +97,9 @@ class BagVis:
             elif show== 'video':
                 detector = VideoVis()
                 while True:
-                    frame = self.pipe.wait_for_frames(timeout_ms=20000)
+                    going, frame = self.pipe.try_wait_for_frames(timeout_ms=20000)
+                    if going is False:
+                        break
                     # align depth to color
                     frame = align.process(frame)
                     color_img = self.get_color_img(frame)
@@ -125,6 +127,8 @@ class BasicDetector:
         self.max_avg_acc = 0
         self.odapi = DetectorAPI()
         self.threshold = 0.7
+        self.old_time = None
+        self.old_coordinate = None
 
     def _detect(self, img, depth=None, threshold=None):
         boxes, scores, classes, num = self.odapi.processFrame(img)
@@ -162,8 +166,12 @@ class BasicDetector:
                 center_y, center_x = box[0]+(box[2]-box[0])//2, box[1]+(box[3]-box[1])//2
                 dis = self.get_depth_value(depth, center_x, center_y)
                 camera_coordinate = rs.rs2_deproject_pixel_to_point(intrin=depth_intrin, pixel=[center_x, center_y], depth=dis)
+                velocity = self.get_velocity(depth, camera_coordinate)
                 cv2.rectangle(img, (box[1], box[0]), (box[3], box[2]), (255,0,0), 2)  # cv2.FILLED #BGR
-                cv2.putText(img, f'P{person, round(scores[i], 2)} Px={camera_coordinate[0]:.2f} Py={camera_coordinate[2]:.2f}', (box[1] - 30, box[0] - 8), cv2.FONT_HERSHEY_COMPLEX,0.5, (255, 255, 0), 1)  # (75,0,130),
+                cv2.putText(img, f'P{person, round(scores[i], 2)}', (box[1] - 30, box[0] - 8), cv2.FONT_HERSHEY_COMPLEX,0.5, (255, 255, 0), 1)  # (75,0,130),
+                cv2.putText(img, f'Position:({camera_coordinate[0]:5.2f} {camera_coordinate[2]:5.2f})', (box[1] + 8, box[0] + 16), cv2.FONT_HERSHEY_PLAIN,1, (255, 255, 0), 1)  # (75,0,130),
+                cv2.putText(img, f'Velocity:({velocity[0]:5.2f} {velocity[1]:5.2f}) m/s', (box[1] + 8, box[0] + 32), cv2.FONT_HERSHEY_PLAIN,1, (255, 255, 0), 1)  # (75,0,130),
+                
                 acc += scores[i]
                 if (scores[i] > self.max_acc):
                     self.max_acc = scores[i]
@@ -178,6 +186,21 @@ class BasicDetector:
 
     def get_depth_value(self, depth, center_x, center_y):
         return depth.get_distance(center_x, center_y)
+
+    def get_velocity(self, current_frame, current):
+        current_timestemp = current_frame.get_timestamp()
+        if self.old_time is None:
+            self.old_time = current_timestemp
+            self.old_coordinate = current
+            return [0, 0]
+        else:
+            duration = (current_timestemp-self.old_time)/1000 + 1e-9 # msec to sec
+            delta_x, delta_y = current[0] - self.old_coordinate[0], current[2] - self.old_coordinate[2]
+            v_x, v_y = delta_x/duration, delta_y/duration
+            
+            self.old_time = current_timestemp
+            self.old_coordinate = current
+            return [v_x, v_y] # m/s
 
 
 class VideoVis(BasicDetector):
