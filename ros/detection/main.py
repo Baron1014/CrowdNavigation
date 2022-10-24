@@ -20,7 +20,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser('Parse configuration file')
     parser.add_argument('--output_dir', type=str, default='output')
     parser.add_argument('--data', type=str, default='data')
-    parser.add_argument('--bag_file', type=str, default='/data/20221017_145906.bag')
+    parser.add_argument('--bag_file', type=str, default='/data/20221024_142540.bag')
 
     sys_args = parser.parse_args()
 
