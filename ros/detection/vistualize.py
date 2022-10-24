@@ -76,10 +76,12 @@ class BagVis:
             if detector.writer:
                 detector.writer.release()
 
-    def detect_color(self, show='image', depth_info=False):
+    def detect_color(self, show='image', depth_info=False, output=False):
         self.config.enable_stream(rs.stream.color, 1280, 720, rs.format.rgb8, 30)
         self.config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
-        self.pipe.start(self.config)
+        profile = self.pipe.start(self.config)
+        playback = profile.get_device().as_playback()
+        playback.set_real_time(False)
         align_to = rs.stream.color
         align = rs.align(align_to)
         try:
@@ -96,9 +98,11 @@ class BagVis:
                     detector.detect(color_img, threshold=self.threshold)
             
             elif show== 'video':
-                detector = VideoVis()
+                detector = VideoVis(output=output)
+                cout = 0
                 while True:
                     going, frame = self.pipe.try_wait_for_frames(timeout_ms=20000)
+                    playback.pause()
                     if going is False:
                         break
                     # align depth to color
@@ -112,6 +116,7 @@ class BagVis:
                     key = cv2.waitKey(1)
 
                     #End loop once video finishes
+                    playback.resume()
                     if key == 27:
                         cv2.destroyAllWindows()
                         break
@@ -219,9 +224,11 @@ class VideoVis(BasicDetector):
         super().__init__()
         self.writer = output
         self.threshold = threshold
+        if output:
+            self.writer = self.set_writer(output)
 
     def set_writer(self, file_name):
-        return cv2.VideoWriter(file_name, cv2.VideoWriter_fourcc(*'XVID'), 20, (640, 480))
+        return cv2.VideoWriter(file_name, cv2.VideoWriter_fourcc(*'XVID'), 20, (1280, 720))
 
     def detect(self, frame, depth=None):
         frame = self._detect(frame, depth=depth, threshold=self.threshold)
@@ -238,7 +245,7 @@ class VideoVis(BasicDetector):
         frame = self._detect_color_with_depth(frame, depth, threshold)
 
         if self.writer:
-            self.writer.write(frame)
+            self.writer.write(cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
 
         cv2.imshow("Human Detection from Video", cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
         
