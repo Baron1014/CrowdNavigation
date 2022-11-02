@@ -4,9 +4,10 @@ import os
 import copy
 import numpy as np
 from persondetection import DetectorAPI
+from itertools import product
 
 class BagVis:
-    def __init__(self, file, repeat=True, threshold=0.7, maxm=4):
+    def __init__(self, file, repeat=True, threshold=0.7, maxm=16):
         '''
         repeat: Image or Video
             True: Video
@@ -53,7 +54,7 @@ class BagVis:
                 depth_img = self.get_depth_img(frame)
 
                 detector = ImgVis()
-                detector.detect(color_img, depth=depth_img, threshold=self.threshold)
+                detector.detect(color_img, depth=depth_img)
 
             elif show== 'video':
                 detector = VideoVis()
@@ -64,7 +65,7 @@ class BagVis:
                     color_img = self.get_color_img(frame)
                     depth_img = self.get_depth_img(frame)
 
-                    detector.detect(color_img, depth=depth_img, threshold=self.threshold)
+                    detector.detect(color_img, depth=depth_img)
                     key = cv2.waitKey(1)
                     #End loop once video finishes
                     if key == 27:
@@ -75,10 +76,12 @@ class BagVis:
             if detector.writer:
                 detector.writer.release()
 
-    def detect_color(self, show='image', depth_info=False):
+    def detect_color(self, show='image', depth_info=False, output=False):
         self.config.enable_stream(rs.stream.color, 1280, 720, rs.format.rgb8, 30)
         self.config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
-        self.pipe.start(self.config)
+        profile = self.pipe.start(self.config)
+        playback = profile.get_device().as_playback()
+        playback.set_real_time(False)
         align_to = rs.stream.color
         align = rs.align(align_to)
         try:
@@ -95,9 +98,11 @@ class BagVis:
                     detector.detect(color_img, threshold=self.threshold)
             
             elif show== 'video':
-                detector = VideoVis()
+                detector = VideoVis(output=output)
+                cout = 0
                 while True:
                     going, frame = self.pipe.try_wait_for_frames(timeout_ms=20000)
+                    playback.pause()
                     if going is False:
                         break
                     # align depth to color
@@ -111,6 +116,7 @@ class BagVis:
                     key = cv2.waitKey(1)
 
                     #End loop once video finishes
+                    playback.resume()
                     if key == 27:
                         cv2.destroyAllWindows()
                         break
@@ -164,13 +170,15 @@ class BasicDetector:
                 box = boxes[i]
                 person += 1
                 center_y, center_x = box[0]+(box[2]-box[0])//2, box[1]+(box[3]-box[1])//2
-                dis = self.get_depth_value(depth, center_x, center_y)
+                left_top, right_bottom = [box[1], box[0]], [box[3], box[2]]
+                dis = self.get_depth_value(depth, left_top, right_bottom)
                 camera_coordinate = rs.rs2_deproject_pixel_to_point(intrin=depth_intrin, pixel=[center_x, center_y], depth=dis)
                 velocity = self.get_velocity(depth, camera_coordinate)
                 cv2.rectangle(img, (box[1], box[0]), (box[3], box[2]), (255,0,0), 2)  # cv2.FILLED #BGR
                 cv2.putText(img, f'P{person, round(scores[i], 2)}', (box[1] - 30, box[0] - 8), cv2.FONT_HERSHEY_COMPLEX,0.5, (255, 255, 0), 1)  # (75,0,130),
-                cv2.putText(img, f'Position:({camera_coordinate[0]:5.2f} {camera_coordinate[2]:5.2f})', (box[1] + 8, box[0] + 16), cv2.FONT_HERSHEY_PLAIN,1, (255, 255, 0), 1)  # (75,0,130),
-                cv2.putText(img, f'Velocity:({velocity[0]:5.2f} {velocity[1]:5.2f}) m/s', (box[1] + 8, box[0] + 32), cv2.FONT_HERSHEY_PLAIN,1, (255, 255, 0), 1)  # (75,0,130),
+                if 0.01<sum(map(abs,velocity))<10:
+                    cv2.putText(img, f'Position:({camera_coordinate[0]:5.2f} {camera_coordinate[2]:5.2f})', (box[1] + 8, box[0] + 16), cv2.FONT_HERSHEY_PLAIN,1, (255, 255, 0), 1)  # (75,0,130),
+                    cv2.putText(img, f'Velocity:({velocity[0]:5.2f} {velocity[1]:5.2f}) m/s', (box[1] + 8, box[0] + 32), cv2.FONT_HERSHEY_PLAIN,1, (255, 255, 0), 1)  # (75,0,130),
                 
                 acc += scores[i]
                 if (scores[i] > self.max_acc):
@@ -184,8 +192,16 @@ class BasicDetector:
 
         return img
 
-    def get_depth_value(self, depth, center_x, center_y):
-        return depth.get_distance(center_x, center_y)
+    def get_depth_value(self, depth, left_top, right_bottom):
+        max_value = 0
+        all_x , all_y = list(), list()
+        for i, j in product(range(left_top[0], right_bottom[0]), range(left_top[1], right_bottom[1])):
+            all_x.append(i)
+            all_y.append(j)
+        all_depth = list(map(depth.get_distance, all_x, all_y))
+        filled_zero = list(filter(lambda x: x != 0, all_depth))
+
+        return min(filled_zero)
 
     def get_velocity(self, current_frame, current):
         current_timestemp = current_frame.get_timestamp()
@@ -208,12 +224,14 @@ class VideoVis(BasicDetector):
         super().__init__()
         self.writer = output
         self.threshold = threshold
+        if output:
+            self.writer = self.set_writer(output)
 
     def set_writer(self, file_name):
-        return cv2.VideoWriter(file_name, cv2.VideoWriter_fourcc(*'XVID'), 20, (640, 480))
+        return cv2.VideoWriter(file_name, cv2.VideoWriter_fourcc(*'XVID'), 20, (1280, 720))
 
     def detect(self, frame, depth=None):
-        frame = self._detect(frame, depth=depth)
+        frame = self._detect(frame, depth=depth, threshold=self.threshold)
         # color problem
         if depth is not None:
             frame =  cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
@@ -227,7 +245,7 @@ class VideoVis(BasicDetector):
         frame = self._detect_color_with_depth(frame, depth, threshold)
 
         if self.writer:
-            self.writer.write(frame)
+            self.writer.write(cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
 
         cv2.imshow("Human Detection from Video", cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
         
