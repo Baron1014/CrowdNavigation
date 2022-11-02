@@ -16,7 +16,7 @@ from crowd_sim.envs.utils.state import tensor_to_joint_state, JointState
 from crowd_sim.envs.utils.action import ActionRot
 from crowd_sim.envs.utils.human import Human
 from crowd_sim.envs.utils.info import *
-from crowd_sim.envs.utils.utils import getCloestEdgeDist, point_to_clostest, checkonLinearEquationSide
+from crowd_sim.envs.utils.utils import getCloestEdgeDist, point_to_clostest, checkonLinearEquationSide, point_to_segment_dist
 
 
 class CrowdSim(gym.Env):
@@ -412,9 +412,9 @@ class CrowdSim(gym.Env):
             ey = py + vy * self.time_step
             # closest distance between boundaries of two agents
             # robot_dist = (self.robot.width**2+self.robot.length**2)**0.5
-            # closest_dist = point_to_segment_dist(px, py, ex, ey, 0, 0) - human.radius
-            closest_x, closest_y = point_to_clostest(px, py, ex, ey, 0, 0)
-            closest_dist = getCloestEdgeDist(closest_x, closest_y, 0, 0, self.robot.width/2, self.robot.length/2) - human.radius
+            closest_dist = point_to_segment_dist(px, py, ex, ey, 0, 0) - human.radius
+            # closest_x, closest_y = point_to_clostest(px, py, ex, ey, 0, 0)
+            # closest_dist = getCloestEdgeDist(closest_x, closest_y, 0, 0, self.robot.width/2, self.robot.length/2) - human.radius
             if closest_dist<0:
                 collision = True
                 logging.debug("Collision: distance between robot and p{} is {:.2E} at time {:.2E}".format(human.id, closest_dist, self.global_time))
@@ -450,9 +450,9 @@ class CrowdSim(gym.Env):
             
 
         # check if reaching the goal
-        goal_delta_x, goal_delta_y = end_position - np.array(self.robot.get_goal_position())
-        # reaching_goal = norm(end_position - np.array(self.robot.get_goal_position())) < closest_dist
-        reaching_goal = True if abs(goal_delta_x) < self.robot.width/2 and abs(goal_delta_y) < self.robot.length/2 else False
+        # goal_delta_x, goal_delta_y = end_position - np.array(self.robot.get_goal_position())
+        reaching_goal = norm(end_position - np.array(self.robot.get_goal_position())) < closest_dist
+        # reaching_goal = True if abs(goal_delta_x) < self.robot.width/2 and abs(goal_delta_y) < self.robot.length/2 else False
 
         if self.global_time >= self.time_limit - 1:
             reward = 0

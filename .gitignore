@@ -8,7 +8,8 @@
 *egg-info
 wandb/
 data/
-
+env/
+*/Python-RVO2/
 
 crowd_nav/sarl_output/__pycache__/
 

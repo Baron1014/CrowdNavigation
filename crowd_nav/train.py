@@ -223,7 +223,7 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser('Parse configuration file')
     parser.add_argument('--output_dir', type=str, default='data/output')
-    parser.add_argument('--overwrite', default=False, action='store_true')
+    parser.add_argument('--overwrite', default=True, action='store_true')
     parser.add_argument('--resume', default=False, action='store_true')
     parser.add_argument('--gpu', default=False, action='store_true')
     parser.add_argument('--debug', default=False, action='store_true')
