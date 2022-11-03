@@ -287,8 +287,8 @@ class CADRL(Policy):
         dmin = float('inf')
         collision = False
         for i, human in enumerate(humans):
-            dist = getCloestEdgeDist(nav.px, nav.py, human.px, human.py, nav.width/2, nav.length/2) - human.radius
-            # dist = np.linalg.norm((nav.px - human.px, nav.py - human.py)) - nav.radius - human.radius
+            # dist = getCloestEdgeDist(nav.px, nav.py, human.px, human.py, nav.width/2, nav.length/2) - human.radius
+            dist = np.linalg.norm((nav.px - human.px, nav.py - human.py)) - nav.radius - human.radius
             if dist < 0:
                 collision = True
                 break
@@ -296,9 +296,9 @@ class CADRL(Policy):
                 dmin = dist
 
         # check if reaching the goal
-        # reaching_goal = np.linalg.norm((nav.px - nav.gx, nav.py - nav.gy)) < nav.radius
-        goal_delta_x, goal_delta_y = nav.px - nav.gx, nav.py - nav.gy
-        reaching_goal = abs(goal_delta_x) < nav.width/2 and abs(goal_delta_y) < nav.length/2
+        reaching_goal = np.linalg.norm((nav.px - nav.gx, nav.py - nav.gy)) < nav.radius
+        # goal_delta_x, goal_delta_y = nav.px - nav.gx, nav.py - nav.gy
+        # reaching_goal = abs(goal_delta_x) < nav.width/2 and abs(goal_delta_y) < nav.length/2
         if collision:
             reward = -0.25
         elif reaching_goal:

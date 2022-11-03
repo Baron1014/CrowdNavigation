@@ -163,8 +163,8 @@ def main(args):
     episode = 0
     best_val_reward = -1
     best_val_model = None
-    # evaluate the model after imitation learning
 
+    # evaluate the model after imitation learning
     if episode % evaluation_interval == 0:
         logging.info('Evaluate the model instantly after imitation learning on the validation cases')
         explorer.run_k_episodes(env.case_size['val'], 'val', episode=episode)
@@ -223,7 +223,7 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser('Parse configuration file')
     parser.add_argument('--output_dir', type=str, default='data/output')
-    parser.add_argument('--overwrite', default=True, action='store_true')
+    parser.add_argument('--overwrite', default=False, action='store_true')
     parser.add_argument('--resume', default=False, action='store_true')
     parser.add_argument('--gpu', default=False, action='store_true')
     parser.add_argument('--debug', default=False, action='store_true')
