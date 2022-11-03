@@ -1,5 +1,5 @@
 from crowd_sim.envs.utils.agent import Agent
-from crowd_sim.envs.utils.state import JointState, RobotState, JointState_noV
+from crowd_sim.envs.utils.state import JointState, JointState_noV
 
 
 class Robot(Agent):

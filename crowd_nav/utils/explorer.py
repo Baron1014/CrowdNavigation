@@ -140,6 +140,8 @@ class Explorer(object):
                     value = 0
             value = torch.Tensor([value]).to(self.device)
             reward = torch.Tensor([rewards[i]]).to(self.device)
+            state = state.to(self.device)
+            next_state = next_state.to(self.device)
 
             if self.target_policy.name == 'ModelPredictiveRL':
                 self.memory.push((state[0], state[1], value, reward, next_state[0], next_state[1]))
