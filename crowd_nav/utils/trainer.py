@@ -233,6 +233,8 @@ class VNRLTrainer(object):
         batch_count = 0
         for data in self.data_loader:
             inputs, _, rewards, next_states = data
+            inputs_length = inputs[1].to(self.device)
+            inputs = tuple(inputs[0], inputs_length)
             self.optimizer.zero_grad()
             outputs = self.model(inputs)
 
