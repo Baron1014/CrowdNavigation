@@ -8,7 +8,7 @@ from crowd_sim.envs.utils.action import ActionRot, ActionXY
 from crowd_sim.envs.utils.state import tensor_to_joint_state
 from crowd_sim.envs.utils.utils import point_to_segment_dist, point_to_clostest, getCloestEdgeDist
 from crowd_nav.policy.state_predictor import StatePredictor, LinearStatePredictor
-from crowd_nav.policy.graph_model import RGL, SSTGCN
+from crowd_nav.policy.graph_model import RGL, SSTGCN, GCN
 from crowd_nav.policy.value_estimator import ValueEstimator
 
 
@@ -29,11 +29,11 @@ class ModelPredictiveRL(Policy):
         self.speeds = None
         self.rotations = None
         self.action_values = None
-        # self.robot_state_dim = 9
-        # self.human_state_dim = 5
+        self.robot_state_dim = 9
+        self.human_state_dim = 5
         # for sstgcn
-        self.robot_state_dim = 5
-        self.human_state_dim = 7
+        # self.robot_state_dim = 5
+        # self.human_state_dim = 7
         self.v_pref = 1
         self.share_graph_model = None
         self.value_estimator = None
@@ -48,6 +48,7 @@ class ModelPredictiveRL(Policy):
         self.action_group_index = []
         self.traj = None
         self.with_lstm = None
+        self.geometric = True
 
     def configure(self, config):
         self.set_common_parameters(config)
@@ -76,6 +77,13 @@ class ModelPredictiveRL(Policy):
                 graph_model1 = SSTGCN(config, self.robot_state_dim, self.human_state_dim)
                 self.value_estimator = ValueEstimator(config, graph_model1)
                 graph_model2 = SSTGCN(config, self.robot_state_dim, self.human_state_dim)
+                self.state_predictor = StatePredictor(config, graph_model2, self.time_step)
+                self.model = [graph_model1, graph_model2, self.value_estimator.value_network,
+                              self.state_predictor.human_motion_predictor]
+            elif self.geometric:
+                graph_model1 = GCN(config, self.robot_state_dim, self.human_state_dim)
+                self.value_estimator = ValueEstimator(config, graph_model1)
+                graph_model2 = GCN(config, self.robot_state_dim, self.human_state_dim)
                 self.state_predictor = StatePredictor(config, graph_model2, self.time_step)
                 self.model = [graph_model1, graph_model2, self.value_estimator.value_network,
                               self.state_predictor.human_motion_predictor]
@@ -236,11 +244,14 @@ class ModelPredictiveRL(Policy):
                 action_space_clipped = self.action_space
 
             for action in action_space_clipped:
-                state_tensor = state.to_tensor(add_batch_size=False, device=self.device)
-                rotate_state_tensor = self.rotate(state_tensor)
-                rotate_state_tensor[0] = rotate_state_tensor[0].unsqueeze(0)
-                rotate_state_tensor[1] = rotate_state_tensor[1].unsqueeze(0)
-                next_state = self.state_predictor(rotate_state_tensor, action)
+                if self.with_lstm:
+                    state_tensor = state.to_tensor(add_batch_size=False, device=self.device)
+                    state_tensor = self.rotate(state_tensor)
+                    state_tensor[0] = state_tensor[0].unsqueeze(0)
+                    state_tensor[1] = state_tensor[1].unsqueeze(0)
+                else:
+                    state_tensor = state.to_tensor(add_batch_size=True, device=self.device)
+                next_state = self.state_predictor(state_tensor, action)
                 max_next_return, max_next_traj = self.V_planning(next_state, self.planning_depth, self.planning_width)
                 reward_est = self.estimate_reward(state, action)
                 value = reward_est + self.get_normalized_gamma() * max_next_return
