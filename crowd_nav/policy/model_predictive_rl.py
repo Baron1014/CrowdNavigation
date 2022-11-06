@@ -8,7 +8,7 @@ from crowd_sim.envs.utils.action import ActionRot, ActionXY
 from crowd_sim.envs.utils.state import tensor_to_joint_state
 from crowd_sim.envs.utils.utils import point_to_segment_dist, point_to_clostest, getCloestEdgeDist
 from crowd_nav.policy.state_predictor import StatePredictor, LinearStatePredictor
-from crowd_nav.policy.graph_model import RGL
+from crowd_nav.policy.graph_model import RGL, SSTGCN
 from crowd_nav.policy.value_estimator import ValueEstimator
 
 
@@ -29,7 +29,7 @@ class ModelPredictiveRL(Policy):
         self.speeds = None
         self.rotations = None
         self.action_values = None
-        self.robot_state_dim = 10
+        self.robot_state_dim = 9
         self.human_state_dim = 5
         self.v_pref = 1
         self.share_graph_model = None
@@ -44,6 +44,7 @@ class ModelPredictiveRL(Policy):
         self.sparse_rotation_samples = 8
         self.action_group_index = []
         self.traj = None
+        self.with_lstm = None
 
     def configure(self, config):
         self.set_common_parameters(config)
@@ -54,6 +55,8 @@ class ModelPredictiveRL(Policy):
         self.planning_width = config.model_predictive_rl.planning_width
         self.share_graph_model = config.model_predictive_rl.share_graph_model
         self.linear_state_predictor = config.model_predictive_rl.linear_state_predictor
+        if hasattr(config.model_predictive_rl, 'with_lstm'):
+            self.with_lstm = config.model_predictive_rl.with_lstm
 
         if self.linear_state_predictor:
             self.state_predictor = LinearStatePredictor(config, self.time_step)
@@ -66,6 +69,13 @@ class ModelPredictiveRL(Policy):
                 self.value_estimator = ValueEstimator(config, graph_model)
                 self.state_predictor = StatePredictor(config, graph_model, self.time_step)
                 self.model = [graph_model, self.value_estimator.value_network, self.state_predictor.human_motion_predictor]
+            elif self.with_lstm:
+                graph_model1 = SSTGCN(config, self.robot_state_dim, self.human_state_dim)
+                self.value_estimator = ValueEstimator(config, graph_model1)
+                graph_model2 = SSTGCN(config, self.robot_state_dim, self.human_state_dim)
+                self.state_predictor = StatePredictor(config, graph_model2, self.time_step)
+                self.model = [graph_model1, graph_model2, self.value_estimator.value_network,
+                              self.state_predictor.human_motion_predictor]
             else:
                 graph_model1 = RGL(config, self.robot_state_dim, self.human_state_dim)
                 self.value_estimator = ValueEstimator(config, graph_model1)
@@ -328,9 +338,9 @@ class ModelPredictiveRL(Policy):
             ex = px + vx * self.time_step
             ey = py + vy * self.time_step
             # closest distance between boundaries of two agents
-            # closest_dist = point_to_segment_dist(px, py, ex, ey, 0, 0) - human.radius - robot_state.radius
-            closest_x, closest_y = point_to_clostest(px, py, ex, ey, 0, 0)
-            closest_dist = getCloestEdgeDist(closest_x, closest_y, 0, 0, robot_state.width/2, robot_state.length/2) - human.radius
+            closest_dist = point_to_segment_dist(px, py, ex, ey, 0, 0) - human.radius - robot_state.radius
+            # closest_x, closest_y = point_to_clostest(px, py, ex, ey, 0, 0)
+            # closest_dist = getCloestEdgeDist(closest_x, closest_y, 0, 0, robot_state.width/2, robot_state.length/2) - human.radius
             if closest_dist < 0:
                 collision = True
                 break
@@ -347,8 +357,9 @@ class ModelPredictiveRL(Policy):
             py = robot_state.py + np.sin(theta) * action.v * self.time_step
 
         # end_position = np.array((px, py))
-        goal_delta_x, goal_delta_y = robot_state.px - robot_state.gx, robot_state.py - robot_state.gy
-        reaching_goal = abs(goal_delta_x) < robot_state.width/2 and abs(goal_delta_y) < robot_state.length/2
+        # goal_delta_x, goal_delta_y = robot_state.px - robot_state.gx, robot_state.py - robot_state.gy
+        # reaching_goal = abs(goal_delta_x) < robot_state.width/2 and abs(goal_delta_y) < robot_state.length/2
+        reaching_goal = np.linalg.norm((robot_state.px - robot_state.gx, robot_state.py - robot_state.gy)) < robot_state.radius
 
         if collision:
             reward = -0.25

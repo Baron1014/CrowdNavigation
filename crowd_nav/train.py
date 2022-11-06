@@ -46,6 +46,7 @@ def main(args):
                 make_new_dir = False
     if make_new_dir:
         pocliy_config = {
+            'sstgcn': 'configs/sstgcn.py',
             'rgl': 'configs/rgl.py',
             'sarl': 'configs/sarl.py', 
             'cadrl': 'configs/cadrl.py',
