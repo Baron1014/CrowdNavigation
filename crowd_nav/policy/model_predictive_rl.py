@@ -29,8 +29,11 @@ class ModelPredictiveRL(Policy):
         self.speeds = None
         self.rotations = None
         self.action_values = None
-        self.robot_state_dim = 9
-        self.human_state_dim = 5
+        # self.robot_state_dim = 9
+        # self.human_state_dim = 5
+        # for sstgcn
+        self.robot_state_dim = 5
+        self.human_state_dim = 7
         self.v_pref = 1
         self.share_graph_model = None
         self.value_estimator = None
@@ -383,5 +386,54 @@ class ModelPredictiveRL(Policy):
         robot_state_tensor = torch.Tensor([state.robot_state.to_tuple()]).to(self.device)
         human_states_tensor = torch.Tensor([human_state.to_tuple() for human_state in state.human_states]). \
             to(self.device)
+        if self.with_lstm:
+            robot_state_tensor, human_states_tensor = self.rotate([robot_state_tensor, human_states_tensor])
 
         return robot_state_tensor, human_states_tensor
+
+    def rotate(self, state):
+        """
+        Transform the coordinate to agent-centric.
+        Input state tensor is of size (batch_size, state_length)
+        """
+        # robot state    
+        # 'px', 'py', 'vx', 'vy', 'gx', 'gy', 'v_pref', 'theta', 'robot_radius'
+        #  0     1      2     3     4     5     6          7           8        
+        # human state 
+        # 'px', 'py', 'vx', 'vy', 'radius'
+        #  0     1      2     3     4
+        robot_state, human_state = state
+
+        batch, human_batch = robot_state.shape[0], human_state.shape[0]
+        dx = (robot_state[:, 4] - robot_state[:, 0]).reshape((batch, -1))
+        dy = (robot_state[:, 5] - robot_state[:, 1]).reshape((batch, -1))
+        rot = torch.atan2(robot_state[:, 5] - robot_state[:, 1], robot_state[:, 4] - robot_state[:, 0])
+
+        dg = torch.norm(torch.cat([dx, dy], dim=1), 2, dim=1, keepdim=True)
+        v_pref = robot_state[:, 6].reshape((batch, -1))
+        vx = (robot_state[:, 2] * torch.cos(rot) + robot_state[:, 3] * torch.sin(rot)).reshape((batch, -1))
+        vy = (robot_state[:, 3] * torch.cos(rot) - robot_state[:, 2] * torch.sin(rot)).reshape((batch, -1))
+
+        # length = state[:, 8].reshape((batch, -1))
+        # width = state[:, 9].reshape((batch, -1))
+        radius = robot_state[:, 8].reshape((batch, -1))
+        if self.kinematics == 'unicycle':
+            theta = (robot_state[:, 7] - rot).reshape((batch, -1))
+        else:
+            theta = torch.zeros_like(v_pref)
+
+        vx1 = (human_state[:, 2] * torch.cos(rot) + human_state[:, 3] * torch.sin(rot)).reshape((human_batch, -1))
+        vy1 = (human_state[:, 3] * torch.cos(rot) - human_state[:, 2] * torch.sin(rot)).reshape((human_batch, -1))
+        px1 = (human_state[:, 0] - robot_state[:, 0]) * torch.cos(rot) + (human_state[:, 1] - robot_state[:, 1]) * torch.sin(rot)
+        px1 = px1.reshape((human_batch, -1))
+        py1 = (human_state[:, 1] - robot_state[:, 1]) * torch.cos(rot) - (human_state[:, 0] - robot_state[:, 0]) * torch.sin(rot)
+        py1 = py1.reshape((human_batch, -1))
+        radius1 = human_state[:, 4].reshape((human_batch, -1))
+        # radius_sum =(width+length)/2 + radius1
+        radius_sum = radius + radius1
+        da = torch.norm(torch.cat([(human_state[:, 0] - robot_state[:, 0]).reshape((human_batch, -1)), (human_state[:, 1] - robot_state[:, 1]).
+                                  reshape((human_batch, -1))], dim=1), 2, dim=1, keepdim=True)
+        new_robot_state = torch.cat([dg, vx, vy, theta, radius], dim=1)
+        new_human_state = torch.cat([px1, py1, vx1, vy1, radius1, da, radius_sum], dim=1)
+        # new_state = torch.cat([dg, v_pref, theta, radius, vx, vy, px1, py1, vx1, vy1, radius1, da, radius_sum], dim=1)
+        return new_robot_state, new_human_state
