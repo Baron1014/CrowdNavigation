@@ -236,8 +236,11 @@ class ModelPredictiveRL(Policy):
                 action_space_clipped = self.action_space
 
             for action in action_space_clipped:
-                state_tensor = state.to_tensor(add_batch_size=True, device=self.device)
-                next_state = self.state_predictor(state_tensor, action)
+                state_tensor = state.to_tensor(add_batch_size=False, device=self.device)
+                rotate_state_tensor = self.rotate(state_tensor)
+                rotate_state_tensor[0] = rotate_state_tensor[0].unsqueeze(0)
+                rotate_state_tensor[1] = rotate_state_tensor[1].unsqueeze(0)
+                next_state = self.state_predictor(rotate_state_tensor, action)
                 max_next_return, max_next_traj = self.V_planning(next_state, self.planning_depth, self.planning_width)
                 reward_est = self.estimate_reward(state, action)
                 value = reward_est + self.get_normalized_gamma() * max_next_return
@@ -436,4 +439,4 @@ class ModelPredictiveRL(Policy):
         new_robot_state = torch.cat([dg, vx, vy, theta, radius], dim=1)
         new_human_state = torch.cat([px1, py1, vx1, vy1, radius1, da, radius_sum], dim=1)
         # new_state = torch.cat([dg, v_pref, theta, radius, vx, vy, px1, py1, vx1, vy1, radius1, da, radius_sum], dim=1)
-        return new_robot_state, new_human_state
+        return [new_robot_state, new_human_state]
