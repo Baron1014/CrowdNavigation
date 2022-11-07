@@ -10,6 +10,7 @@ from crowd_sim.envs.utils.utils import point_to_segment_dist, point_to_clostest,
 from crowd_nav.policy.state_predictor import StatePredictor, LinearStatePredictor
 from crowd_nav.policy.graph_model import RGL, SSTGCN, GCN
 from crowd_nav.policy.value_estimator import ValueEstimator
+from itertools import permutations
 
 
 class ModelPredictiveRL(Policy):
@@ -49,6 +50,7 @@ class ModelPredictiveRL(Policy):
         self.traj = None
         self.with_lstm = None
         self.geometric = True
+        self.edge_index = None
 
     def configure(self, config):
         self.set_common_parameters(config)
@@ -59,6 +61,7 @@ class ModelPredictiveRL(Policy):
         self.planning_width = config.model_predictive_rl.planning_width
         self.share_graph_model = config.model_predictive_rl.share_graph_model
         self.linear_state_predictor = config.model_predictive_rl.linear_state_predictor
+        self.nodes = config.gcn.nodes
         if hasattr(config.model_predictive_rl, 'with_lstm'):
             self.with_lstm = config.model_predictive_rl.with_lstm
 
@@ -81,6 +84,9 @@ class ModelPredictiveRL(Policy):
                 self.model = [graph_model1, graph_model2, self.value_estimator.value_network,
                               self.state_predictor.human_motion_predictor]
             elif self.geometric:
+                # create edge
+                edge_pair = [[i, j] for i,j in permutations(self.nodes, 2)]
+                self.edge_index = torch.tensor(edge_pair, dtype=torch.long, device=self.device).t().contiguous()
                 graph_model1 = GCN(config, self.robot_state_dim, self.human_state_dim)
                 self.value_estimator = ValueEstimator(config, graph_model1)
                 graph_model2 = GCN(config, self.robot_state_dim, self.human_state_dim)
@@ -127,6 +133,9 @@ class ModelPredictiveRL(Policy):
 
     def get_model(self):
         return self.value_estimator
+
+    def get_edge(self):
+        return self.edge_index
 
     def get_state_dict(self):
         if self.state_predictor.trainable:
@@ -251,7 +260,8 @@ class ModelPredictiveRL(Policy):
                     state_tensor[1] = state_tensor[1].unsqueeze(0)
                 else:
                     state_tensor = state.to_tensor(add_batch_size=True, device=self.device)
-                next_state = self.state_predictor(state_tensor, action)
+                
+                next_state = self.state_predictor(state_tensor, action, edge_index=self.edge_index)
                 max_next_return, max_next_traj = self.V_planning(next_state, self.planning_depth, self.planning_width)
                 reward_est = self.estimate_reward(state, action)
                 value = reward_est + self.get_normalized_gamma() * max_next_return
@@ -273,7 +283,7 @@ class ModelPredictiveRL(Policy):
         values = []
 
         for action in action_space:
-            next_state_est = self.state_predictor(state, action)
+            next_state_est = self.state_predictor(state, action, edge_index=self.edge_index)
             next_return, _ = self.V_planning(next_state_est, depth, width)
             reward_est = self.estimate_reward(state, action)
             value = reward_est + self.get_normalized_gamma() * next_return
@@ -304,7 +314,7 @@ class ModelPredictiveRL(Policy):
 
         """
 
-        current_state_value = self.value_estimator(state)
+        current_state_value = self.value_estimator(state, self.edge_index)
         if depth == 1:
             return current_state_value, [(state, None, None)]
 
@@ -317,7 +327,7 @@ class ModelPredictiveRL(Policy):
         trajs = []
 
         for action in action_space_clipped:
-            next_state_est = self.state_predictor(state, action)
+            next_state_est = self.state_predictor(state, action, edge_index=self.edge_index)
             reward_est = self.estimate_reward(state, action)
             next_value, next_traj = self.V_planning(next_state_est, depth - 1, self.planning_width)
             return_value = current_state_value / depth + (depth - 1) / depth * (self.get_normalized_gamma() * next_value + reward_est)

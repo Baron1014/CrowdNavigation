@@ -17,6 +17,7 @@ class PolicyConfig(BasePolicyConfig):
         self.gcn.similarity_function = 'embedded_gaussian'
         self.gcn.layerwise_graph = False
         self.gcn.skip_connection = True
+        self.gcn.nodes = [*range(5+1)]
 
         self.model_predictive_rl = Config()
         self.model_predictive_rl.linear_state_predictor = False

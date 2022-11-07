@@ -6,7 +6,6 @@ from torch.nn.functional import softmax, relu
 from torch.nn import Parameter
 from crowd_nav.policy.helpers import mlp
 from torch_geometric.nn import RGCNConv, GCNConv
-from itertools import permutations
 
 class GCN(nn.Module):
     def __init__(self, config, robot_state_dim, human_state_dim):
@@ -20,15 +19,9 @@ class GCN(nn.Module):
         self.w_r = mlp(robot_state_dim, wr_dims, last_relu=True)
         self.w_h = mlp(human_state_dim, wh_dims, last_relu=True)
         self.gcn = GCNConv(self.X_dim, self.X_dim)
-        # create edge
-        tail, head = [], []
-        for i,j in permutations([*range(6)], 2):
-            tail.append(i)
-            head.append(j)
-        self.edge_index = torch.tensor([tail, head])
         
     
-    def forward(self, state):
+    def forward(self, state, edge_index):
         """
         Embed current state tensor pair (robot_state, human_states) into a latent space
         Each tensor is of shape (batch_size, # of agent, features)
@@ -44,7 +37,7 @@ class GCN(nn.Module):
 
         next_H = H = X
         for i in range(self.num_layer):
-            next_H = relu(self.gcn(X, self.edge_index))
+            next_H = relu(self.gcn(X, edge_index))
 
             if self.skip_connection:
                 next_H = next_H.clone() + H
