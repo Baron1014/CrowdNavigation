@@ -10,7 +10,7 @@ import wandb
 from configs import logger
 from configs import config as global_config
 from crowd_sim.envs.utils.robot import Robot
-from crowd_nav.utils.trainer import MPRLTrainer, VNRLTrainer
+from crowd_nav.utils.trainer import MPRLTrainer, VNRLTrainer, GRAPHTrainer
 from crowd_nav.utils.memory import ReplayMemory
 from crowd_nav.utils.explorer import Explorer
 from crowd_nav.policy.policy_factory import policy_factory
@@ -46,6 +46,7 @@ def main(args):
                 make_new_dir = False
     if make_new_dir:
         pocliy_config = {
+            'gcnrl': 'configs/gcnrl.py',
             'sstgcn': 'configs/sstgcn.py',
             'rgl': 'configs/rgl.py',
             'sarl': 'configs/sarl.py', 
@@ -113,8 +114,13 @@ def main(args):
                               reduce_sp_update_frequency=train_config.train.reduce_sp_update_frequency,
                               freeze_state_predictor=train_config.train.freeze_state_predictor,
                               detach_state_predictor=train_config.train.detach_state_predictor,
-                              share_graph_model=policy_config.model_predictive_rl.share_graph_model,
-                              graph_edge=policy.get_edge())
+                              share_graph_model=policy_config.model_predictive_rl.share_graph_model)
+    elif policy_config.name == 'gcnrl':
+        trainer = GRAPHTrainer(model, policy.state_predictor, memory, device, policy, writer, batch_size, optimizer, env.human_num,
+                              reduce_sp_update_frequency=train_config.train.reduce_sp_update_frequency,
+                              freeze_state_predictor=train_config.train.freeze_state_predictor,
+                              detach_state_predictor=train_config.train.detach_state_predictor,
+                              share_graph_model=policy_config.model_predictive_rl.share_graph_model)
     else:
         trainer = VNRLTrainer(model, memory, device, policy, batch_size, optimizer, writer)
     explorer = Explorer(env, robot, device, writer, memory, policy.gamma, target_policy=policy)

@@ -145,6 +145,8 @@ class Explorer(object):
 
             if self.target_policy.name == 'ModelPredictiveRL':
                 self.memory.push((state[0], state[1], value, reward, next_state[0], next_state[1]))
+            elif self.target_policy.name == 'GCNRL':
+                self.memory.push((state[0], state[1], value, reward, next_state[0], next_state[1]), graph=True)
             else:
                 self.memory.push((state, value, reward, next_state))
 

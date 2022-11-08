@@ -4,12 +4,13 @@ import copy
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader
+# from torch.utils.data import DataLoader
+from torch_geometric.loader import TemporalDataLoader
 
 
 class MPRLTrainer(object):
     def __init__(self, value_estimator, state_predictor, memory, device, policy, writer, batch_size, optimizer_str, human_num,
-                 reduce_sp_update_frequency, freeze_state_predictor, detach_state_predictor, share_graph_model, graph_edge):
+                 reduce_sp_update_frequency, freeze_state_predictor, detach_state_predictor, share_graph_model):
         """
         Train the trainable model of a policy
         """
@@ -31,7 +32,7 @@ class MPRLTrainer(object):
         self.share_graph_model = share_graph_model
         self.v_optimizer = None
         self.s_optimizer = None
-        self.graph_edge = graph_edge
+        self.graph_edge = policy.get_edge()
 
         # for value update
         self.gamma = 0.9
