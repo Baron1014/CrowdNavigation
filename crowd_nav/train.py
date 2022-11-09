@@ -46,7 +46,7 @@ def main(args):
                 make_new_dir = False
     if make_new_dir:
         pocliy_config = {
-            'gcnrl': 'configs/gcnrl.py',
+            'dgcnrl': 'configs/dgcnrl.py',
             'sstgcn': 'configs/sstgcn.py',
             'rgl': 'configs/rgl.py',
             'sarl': 'configs/sarl.py', 
@@ -115,12 +115,8 @@ def main(args):
                               freeze_state_predictor=train_config.train.freeze_state_predictor,
                               detach_state_predictor=train_config.train.detach_state_predictor,
                               share_graph_model=policy_config.model_predictive_rl.share_graph_model)
-    elif policy_config.name == 'gcnrl':
-        trainer = GRAPHTrainer(model, policy.state_predictor, memory, device, policy, writer, batch_size, optimizer, env.human_num,
-                              reduce_sp_update_frequency=train_config.train.reduce_sp_update_frequency,
-                              freeze_state_predictor=train_config.train.freeze_state_predictor,
-                              detach_state_predictor=train_config.train.detach_state_predictor,
-                              share_graph_model=policy_config.model_predictive_rl.share_graph_model)
+    elif policy_config.name == 'dgcnrl':
+        trainer = GRAPHTrainer(model, memory, device, policy, batch_size, optimizer, writer)
     else:
         trainer = VNRLTrainer(model, memory, device, policy, batch_size, optimizer, writer)
     explorer = Explorer(env, robot, device, writer, memory, policy.gamma, target_policy=policy)
@@ -231,13 +227,13 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser('Parse configuration file')
     parser.add_argument('--output_dir', type=str, default='data/output')
-    parser.add_argument('--overwrite', default=False, action='store_true')
+    parser.add_argument('--overwrite', default=True, action='store_true')
     parser.add_argument('--resume', default=False, action='store_true')
     parser.add_argument('--gpu', default=False, action='store_true')
     parser.add_argument('--debug', default=False, action='store_true')
     parser.add_argument('--randomseed', type=int, default=17)
     parser.add_argument('--wandb', default=False, action='store_true')
-    parser.add_argument('--policy', type=str, default='lstm_rl')
+    parser.add_argument('--policy', type=str, default='dgcnrl')
 
     sys_args = parser.parse_args()
 

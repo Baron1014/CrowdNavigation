@@ -4,7 +4,7 @@ import copy
 import torch
 import torch.nn as nn
 import torch.optim as optim
-# from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader
 from torch_geometric.loader import TemporalDataLoader
 
 
@@ -79,7 +79,7 @@ class MPRLTrainer(object):
 
                 # optimize value estimator
                 self.v_optimizer.zero_grad()
-                outputs = self.value_estimator((robot_states, human_states), self.graph_edge)
+                outputs = self.value_estimator((robot_states, human_states))
                 values = values.to(self.device)
                 loss = self.criterion(outputs, values)
                 loss.backward()
@@ -94,7 +94,7 @@ class MPRLTrainer(object):
 
                     if update_state_predictor:
                         self.s_optimizer.zero_grad()
-                        _, next_human_states_est = self.state_predictor((robot_states, human_states), None, edge_index=self.graph_edge)
+                        _, next_human_states_est = self.state_predictor((robot_states, human_states), None)
                         loss = self.criterion(next_human_states_est, next_human_states)
                         loss.backward()
                         self.s_optimizer.step()
@@ -163,6 +163,7 @@ class MPRLTrainer(object):
             self.writer.log({'RL/average_s_loss': average_s_loss}, step=episode)
 
         return average_v_loss, average_s_loss
+
 
 
 class VNRLTrainer(object):
@@ -254,6 +255,69 @@ class VNRLTrainer(object):
 
         return average_loss
 
+class GRAPHTrainer(VNRLTrainer):
+    def __init__(self, model, memory, device, policy, batch_size, optimizer_str, writer):
+        super().__init__(model, memory, device, policy, batch_size, optimizer_str, writer)
+
+
+    def optimize_epoch(self, num_epochs):
+        if self.optimizer is None:
+            raise ValueError('Learning rate is not set!')
+        if self.data_loader is None:
+            # self.data_loader = DataLoader(self.memory, self.batch_size, shuffle=True)
+            self.data_loader = TemporalDataLoader(self.memory.graph_memory, self.batch_size)
+        
+        average_epoch_loss = 0
+        for epoch in range(num_epochs):
+            epoch_loss = 0
+            logging.debug('{}-th epoch starts'.format(epoch))
+            for data in self.data_loader:
+                # inputs, values, _, _ = data
+                values = torch.stack([graph['robot'].y for graph in data])
+                self.optimizer.zero_grad()
+                outputs = self.model(data)
+                values = values.to(self.device)
+                loss = self.criterion(outputs, values)
+                loss.backward()
+                self.optimizer.step()
+                epoch_loss += loss.data.item()
+            logging.debug('{}-th epoch ends'.format(epoch))
+            average_epoch_loss = epoch_loss / len(self.memory)
+            if self.writer != None:
+                self.writer.log({'IL/average_epoch_loss': average_epoch_loss}, step=epoch)
+            logging.info('Average loss in epoch %d: %.2E', epoch, average_epoch_loss)
+
+        return average_epoch_loss
+
+    def optimize_batch(self, num_batches, episode=None):
+        if self.optimizer is None:
+            raise ValueError('Learning rate is not set!')
+        if self.data_loader is None:
+            # self.data_loader = DataLoader(self.memory, self.batch_size, shuffle=True, collate_fn=pad_batch)
+            self.data_loader = TemporalDataLoader(self.memory.graph_memory, self.batch_size)
+
+        losses = 0
+        batch_count = 0
+        for data in self.data_loader:
+            inputs, _, rewards, next_states = data
+            self.optimizer.zero_grad()
+            outputs = self.model(data)
+
+            gamma_bar = pow(self.gamma, self.time_step * self.v_pref)
+            target_values = rewards + gamma_bar * self.target_model(next_states)
+
+            loss = self.criterion(outputs, target_values)
+            loss.backward()
+            self.optimizer.step()
+            losses += loss.data.item()
+            batch_count += 1
+            if batch_count > num_batches:
+                break
+
+        average_loss = losses / num_batches
+        logging.info('Average loss : %.2E', average_loss)
+
+        return average_loss
 
 def pad_batch(batch):
     """

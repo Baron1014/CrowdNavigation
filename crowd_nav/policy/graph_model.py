@@ -5,46 +5,6 @@ import torch.nn as nn
 from torch.nn.functional import softmax, relu
 from torch.nn import Parameter
 from crowd_nav.policy.helpers import mlp
-from torch_geometric.nn import RGCNConv, GCNConv
-
-class GCN(nn.Module):
-    def __init__(self, config, robot_state_dim, human_state_dim):
-        super().__init__()
-        wr_dims = config.gcn.wr_dims
-        wh_dims = config.gcn.wh_dims
-
-        self.X_dim = config.gcn.X_dim
-        self.num_layer = config.gcn.num_layer
-        self.skip_connection = config.gcn.skip_connection
-        self.w_r = mlp(robot_state_dim, wr_dims, last_relu=True)
-        self.w_h = mlp(human_state_dim, wh_dims, last_relu=True)
-        self.gcn = GCNConv(self.X_dim, self.X_dim)
-        
-    
-    def forward(self, state, edge_index):
-        """
-        Embed current state tensor pair (robot_state, human_states) into a latent space
-        Each tensor is of shape (batch_size, # of agent, features)
-        :param state:
-        :return:
-        """
-        robot_state, human_states = state
-
-        # compute feature matrix X
-        robot_state_embedings = self.w_r(robot_state)
-        human_state_embedings = self.w_h(human_states)
-        X = torch.cat([robot_state_embedings, human_state_embedings], dim=1)
-
-        next_H = H = X
-        for i in range(self.num_layer):
-            next_H = relu(self.gcn(X, edge_index))
-
-            if self.skip_connection:
-                next_H = next_H.clone() + H
-            H = next_H
-
-        return next_H
-
 
 class RGL(nn.Module):
     def __init__(self, config, robot_state_dim, human_state_dim):

@@ -8,7 +8,7 @@ from crowd_sim.envs.utils.action import ActionRot, ActionXY
 from crowd_sim.envs.utils.state import tensor_to_joint_state
 from crowd_sim.envs.utils.utils import point_to_segment_dist, point_to_clostest, getCloestEdgeDist
 from crowd_nav.policy.state_predictor import StatePredictor, LinearStatePredictor
-from crowd_nav.policy.graph_model import RGL, SSTGCN, GCN
+from crowd_nav.policy.graph_model import RGL, SSTGCN
 from crowd_nav.policy.value_estimator import ValueEstimator
 from itertools import permutations
 
@@ -49,7 +49,6 @@ class ModelPredictiveRL(Policy):
         self.action_group_index = []
         self.traj = None
         self.with_lstm = None
-        self.geometric = True
         self.edge_index = None
 
     def configure(self, config):
@@ -80,16 +79,6 @@ class ModelPredictiveRL(Policy):
                 graph_model1 = SSTGCN(config, self.robot_state_dim, self.human_state_dim)
                 self.value_estimator = ValueEstimator(config, graph_model1)
                 graph_model2 = SSTGCN(config, self.robot_state_dim, self.human_state_dim)
-                self.state_predictor = StatePredictor(config, graph_model2, self.time_step)
-                self.model = [graph_model1, graph_model2, self.value_estimator.value_network,
-                              self.state_predictor.human_motion_predictor]
-            elif self.geometric:
-                # create edge
-                edge_pair = [[i, j] for i,j in permutations(self.nodes, 2)]
-                self.edge_index = torch.tensor(edge_pair, dtype=torch.long, device=self.device).t().contiguous()
-                graph_model1 = GCN(config, self.robot_state_dim, self.human_state_dim)
-                self.value_estimator = ValueEstimator(config, graph_model1)
-                graph_model2 = GCN(config, self.robot_state_dim, self.human_state_dim)
                 self.state_predictor = StatePredictor(config, graph_model2, self.time_step)
                 self.model = [graph_model1, graph_model2, self.value_estimator.value_network,
                               self.state_predictor.human_motion_predictor]
