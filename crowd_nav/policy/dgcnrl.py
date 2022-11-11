@@ -134,7 +134,7 @@ class DGCNRL(ModelPredictiveRL):
                     to(self.device)
 
                 # VALUE UPDATE
-                outputs = self.model(self.to_graph([next_self_state, next_human_states]).to(self.device))
+                outputs = self.model([self.to_graph([next_self_state, next_human_states]).to(self.device)])
                 min_output, min_index = torch.min(outputs, 0)
                 min_value = reward + pow(self.gamma, self.time_step * state.robot_state.v_pref) * min_output.data.item()
                 self.action_values.append(min_value)
