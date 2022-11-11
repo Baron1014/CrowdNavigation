@@ -264,18 +264,17 @@ class GRAPHTrainer(VNRLTrainer):
         if self.optimizer is None:
             raise ValueError('Learning rate is not set!')
         if self.data_loader is None:
-            # self.data_loader = DataLoader(self.memory, self.batch_size, shuffle=True)
-            self.data_loader = TemporalDataLoader(self.memory.graph_memory, self.batch_size)
+            self.data_loader = DataLoader(self.memory, self.batch_size, collate_fn=graph_batch)
+            # self.data_loader = TemporalDataLoader(self.memory.get_graph_memory(), self.batch_size)
         
         average_epoch_loss = 0
         for epoch in range(num_epochs):
             epoch_loss = 0
             logging.debug('{}-th epoch starts'.format(epoch))
             for data in self.data_loader:
-                # inputs, values, _, _ = data
-                values = torch.stack([graph['robot'].y for graph in data])
+                inputs, values, _, _ = data
                 self.optimizer.zero_grad()
-                outputs = self.model(data)
+                outputs = self.model(inputs)
                 values = values.to(self.device)
                 loss = self.criterion(outputs, values)
                 loss.backward()
@@ -294,14 +293,14 @@ class GRAPHTrainer(VNRLTrainer):
             raise ValueError('Learning rate is not set!')
         if self.data_loader is None:
             # self.data_loader = DataLoader(self.memory, self.batch_size, shuffle=True, collate_fn=pad_batch)
-            self.data_loader = TemporalDataLoader(self.memory.graph_memory, self.batch_size)
+            self.data_loader = DataLoader(self.memory, self.batch_size, collate_fn=graph_batch)
 
         losses = 0
         batch_count = 0
         for data in self.data_loader:
-            inputs, _, rewards, next_states = data
+            _input, _, rewards, next_states = data
             self.optimizer.zero_grad()
-            outputs = self.model(data)
+            outputs = self.model(_input)
 
             gamma_bar = pow(self.gamma, self.time_step * self.v_pref)
             target_values = rewards + gamma_bar * self.target_model(next_states)
@@ -339,3 +338,13 @@ def pad_batch(batch):
     next_states = sort_states(3)
 
     return states, values, rewards, next_states
+
+def graph_batch(batch):
+    values, rewards, graphs, next_graph = [], [], [], []
+    for data in batch:
+        graphs.append(data[0])
+        values.append(data[1])
+        rewards.append(data[2])
+        next_graph.append(data[3])
+    
+    return graphs, torch.stack(values), torch.stack(rewards), next_graph
