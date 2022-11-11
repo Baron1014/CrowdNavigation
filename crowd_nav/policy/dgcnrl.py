@@ -1,23 +1,16 @@
 from crowd_sim.envs.policy.policy import Policy
 from torch import nn
 from torch_geometric.nn import GCNConv, GATConv, ChebConv
-from torch_geometric_temporal.nn import TemporalConv
-from torch_geometric_temporal.nn.recurrent import DCRNN, AGCRN
-import networkx as nx
-from torch_geometric.utils.convert import from_networkx
 # from crowd_nav.policy.cadrl import CADRL
 from crowd_nav.policy.model_predictive_rl import ModelPredictiveRL
-from crowd_nav.policy.cadrl import CADRL
 from crowd_sim.envs.utils.action import ActionRot, ActionXY
 import numpy as np
-from crowd_nav.policy.state_predictor import StatePredictor
 from crowd_nav.policy.value_estimator import GraphValueEstimator
-from itertools import permutations
 import torch
 from crowd_nav.policy.helpers import mlp
 from torch.nn.functional import relu
 from crowd_sim.envs.utils.state import ObservableState, FullState
-from torch_geometric.data import Data, HeteroData
+from torch_geometric.data import HeteroData
 from itertools import combinations
 
 class DGCRNN(nn.Module):
@@ -55,7 +48,7 @@ class DGCRNN(nn.Module):
         X = torch.cat([robot_state_embedings, human_state_embedings], dim=1)
         edge_index = edge_index.type(torch.LongTensor)
 
-        dcrnn_out = self.dcrnn(X, edge_index)
+        dcrnn_out = relu(self.dcrnn(X, edge_index))
         return dcrnn_out[:, 0, :]
 
     
