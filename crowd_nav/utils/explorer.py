@@ -148,7 +148,7 @@ class Explorer(object):
             if self.target_policy.name == 'ModelPredictiveRL':
                 self.memory.push((state[0], state[1], value, reward, next_state[0], next_state[1]))
             elif self.target_policy.name == 'DGCNRL':
-                self.memory.push((self.to_graph((state[0], state[1])), value, reward, self.to_graph((next_state[0], next_state[1]))))
+                self.memory.push((self.target_policy.to_graph((state[0], state[1])), value, reward, self.target_policy.to_graph((next_state[0], next_state[1]))))
             else:
                 self.memory.push((state, value, reward, next_state))
 
@@ -160,32 +160,6 @@ class Explorer(object):
         self.writer.log({tag_prefix + '/reward': reward}, step=global_step)
         self.writer.log({tag_prefix + '/avg_return': avg_return}, step=global_step)
     
-    def to_graph(self, item):
-        robot_state, human_states = item
-
-        human_batch = len(human_states)
-        # spatial edge
-        rh_weights = torch.norm(torch.cat([(human_states[:, 0] - robot_state[:, 0]).reshape((human_batch, -1)), (human_states[:, 1] - robot_state[:, 1]).
-                                reshape((human_batch, -1))], dim=1), 2, dim=1, keepdim=True) # h_position - r_posiotion
-        edge_index = [[0, i] for i in range(1, human_batch+1)] # create rh_edges
-        # hh_edge & weight
-        for i, j in combinations([*range(human_batch)], 2):
-            node_i, node_j = i+1, j+1
-            edge_index.append([node_i, node_j]) # create hh_edges
-
-        human_states = torch.cat((human_states, rh_weights), 1)
-        data = HeteroData({
-            'robot':{
-                'x': robot_state
-            }, 
-            'human': {
-                'x': human_states
-            }            
-        })
-        data['robot', 'human'].edge_index = torch.tensor(edge_index).t().contiguous() # robot_human to human_human
-        data['human', 'robot'].edge_index = torch.flip(torch.tensor(edge_index),  dims=(1,)).t().contiguous() # human_human to robot_human
-        
-        return data
 
 
 def average(input_list):

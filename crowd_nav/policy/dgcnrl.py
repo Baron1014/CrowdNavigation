@@ -39,14 +39,12 @@ class DGCRNN(nn.Module):
         for graph in graphs:
             robot_feature.append(graph['robot'].x)
             human_feature.append(graph['human'].x)
-            edge_index = torch.tensor([])
-            for edge in graph.edge_types:
-                edge_index = torch.cat([edge_index, graph[edge]['edge_index']], 1)
+            rh, hr = graph.edge_types
+            edge_index = torch.cat([graph[rh]['edge_index'], graph[hr]['edge_index']], 1)
         
         robot_state_embedings = self.w_r(torch.stack(robot_feature))
         human_state_embedings = self.w_h(torch.stack(human_feature))
         X = torch.cat([robot_state_embedings, human_state_embedings], dim=1)
-        edge_index = edge_index.type(torch.LongTensor)
 
         dcrnn_out = relu(self.dcrnn(X, edge_index))
         return dcrnn_out[:, 0, :]
@@ -136,7 +134,7 @@ class DGCNRL(ModelPredictiveRL):
                     to(self.device)
 
                 # VALUE UPDATE
-                outputs = self.model(self.to_graph([next_self_state, next_human_states]))
+                outputs = self.model(self.to_graph([next_self_state, next_human_states]).to(self.device))
                 min_output, min_index = torch.min(outputs, 0)
                 min_value = reward + pow(self.gamma, self.time_step * state.robot_state.v_pref) * min_output.data.item()
                 self.action_values.append(min_value)
@@ -206,15 +204,15 @@ class DGCNRL(ModelPredictiveRL):
 
         return reward
 
-    def to_graph(self, state):
-        robot_state, human_states = state
+    def to_graph(self, item):
+        robot_state, human_states = item
+
         human_batch = len(human_states)
         # spatial edge
         rh_weights = torch.norm(torch.cat([(human_states[:, 0] - robot_state[:, 0]).reshape((human_batch, -1)), (human_states[:, 1] - robot_state[:, 1]).
                                 reshape((human_batch, -1))], dim=1), 2, dim=1, keepdim=True) # h_position - r_posiotion
         edge_index = [[0, i] for i in range(1, human_batch+1)] # create rh_edges
         # hh_edge & weight
-        hh_weights = torch.tensor([])
         for i, j in combinations([*range(human_batch)], 2):
             node_i, node_j = i+1, j+1
             edge_index.append([node_i, node_j]) # create hh_edges
@@ -231,4 +229,4 @@ class DGCNRL(ModelPredictiveRL):
         data['robot', 'human'].edge_index = torch.tensor(edge_index).t().contiguous() # robot_human to human_human
         data['human', 'robot'].edge_index = torch.flip(torch.tensor(edge_index),  dims=(1,)).t().contiguous() # human_human to robot_human
         
-        return [data]
+        return data
