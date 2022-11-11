@@ -264,7 +264,7 @@ class GRAPHTrainer(VNRLTrainer):
         if self.optimizer is None:
             raise ValueError('Learning rate is not set!')
         if self.data_loader is None:
-            self.data_loader = DataLoader(self.memory, self.batch_size, collate_fn=graph_batch)
+            self.data_loader = DataLoader(self.memory, self.batch_size, collate_fn=lambda x:graph_batch(x, device=self.device))
             # self.data_loader = TemporalDataLoader(self.memory.get_graph_memory(), self.batch_size)
         
         average_epoch_loss = 0
@@ -288,12 +288,12 @@ class GRAPHTrainer(VNRLTrainer):
 
         return average_epoch_loss
 
-    def optimize_batch(self, num_batches, episode=None):
+    def optimize_batch(self, num_batches):
         if self.optimizer is None:
             raise ValueError('Learning rate is not set!')
         if self.data_loader is None:
             # self.data_loader = DataLoader(self.memory, self.batch_size, shuffle=True, collate_fn=pad_batch)
-            self.data_loader = DataLoader(self.memory, self.batch_size, collate_fn=graph_batch)
+            self.data_loader = DataLoader(self.memory, self.batch_size, collate_fn=lambda x:graph_batch(x, device=self.device))
 
         losses = 0
         batch_count = 0
@@ -339,12 +339,12 @@ def pad_batch(batch):
 
     return states, values, rewards, next_states
 
-def graph_batch(batch):
+def graph_batch(batch, device):
     values, rewards, graphs, next_graph = [], [], [], []
     for data in batch:
-        graphs.append(data[0])
+        graphs.append(data[0].to(device))
         values.append(data[1])
         rewards.append(data[2])
-        next_graph.append(data[3])
+        next_graph.append(data[3].to(device))
     
     return graphs, torch.stack(values), torch.stack(rewards), next_graph
