@@ -222,7 +222,7 @@ class VNRLTrainer(object):
             logging.debug('{}-th epoch ends'.format(epoch))
             average_epoch_loss = epoch_loss / len(self.memory)
             if self.writer != None:
-                self.writer.log({'IL/average_epoch_loss': average_epoch_loss}, step=epoch)
+                self.writer.log({'IL/average_v_loss': average_epoch_loss}, step=epoch)
             logging.info('Average loss in epoch %d: %.2E', epoch, average_epoch_loss)
 
         return average_epoch_loss
@@ -252,6 +252,8 @@ class VNRLTrainer(object):
 
         average_loss = losses / num_batches
         logging.info('Average loss : %.2E', average_loss)
+        if self.writer != None:
+            self.writer.log({'RL/average_v_loss': average_loss}, step=episode)
 
         return average_loss
 
@@ -283,12 +285,12 @@ class GRAPHTrainer(VNRLTrainer):
             logging.debug('{}-th epoch ends'.format(epoch))
             average_epoch_loss = epoch_loss / len(self.memory)
             if self.writer != None:
-                self.writer.log({'IL/average_epoch_loss': average_epoch_loss}, step=epoch)
+                self.writer.log({'IL/average_v_loss': average_epoch_loss}, step=epoch)
             logging.info('Average loss in epoch %d: %.2E', epoch, average_epoch_loss)
 
         return average_epoch_loss
 
-    def optimize_batch(self, num_batches):
+    def optimize_batch(self, num_batches, episode=None):
         if self.optimizer is None:
             raise ValueError('Learning rate is not set!')
         if self.data_loader is None:
@@ -315,6 +317,8 @@ class GRAPHTrainer(VNRLTrainer):
 
         average_loss = losses / num_batches
         logging.info('Average loss : %.2E', average_loss)
+        if self.writer != None:
+            self.writer.log({'RL/average_v_loss': average_loss}, step=episode)
 
         return average_loss
 
