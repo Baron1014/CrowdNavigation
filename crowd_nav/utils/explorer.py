@@ -214,9 +214,9 @@ class Explorer(object):
             curr_seq_rel[i, :, :] = rel_curr_ped_seq
 
         #Convert to Graphs
-        a_ = self.target_policy.seq_to_attrgraph(curr_seq_rel,self.target_policy.norm_lap_matr)
-        vh_ = self.target_policy.seq_to_nodes(human_seq_feature)
-        vr_ = self.target_policy.seq_to_nodes(robot_seq_feature)
+        a_ = self.target_policy.seq_to_attrgraph(curr_seq_rel,self.target_policy.norm_lap_matr).to(self.device)
+        vh_ = self.target_policy.seq_to_nodes(human_seq_feature).to(self.device)
+        vr_ = self.target_policy.seq_to_nodes(robot_seq_feature).to(self.device)
         return [vr_, vh_], a_
             
 

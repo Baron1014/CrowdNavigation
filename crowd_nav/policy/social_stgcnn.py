@@ -304,37 +304,33 @@ class SSTGCNN_RL(DGCNRL):
     def to_graph(self, state):
         robot_state, human_states = state
         obs_len = len(robot_state)
-        curr_seq_humans = np.concatenate(human_states, axis=0)
-        peds_in_curr_seq = np.unique(curr_seq_humans[:, 0])
-        curr_seq_rel = np.zeros((len(peds_in_curr_seq)+1, 2,
+        curr_seq_humans = torch.cat([*human_states], dim=0)
+        peds_in_curr_seq = torch.unique(curr_seq_humans[:, 0])
+        curr_seq_rel = torch.zeros((len(peds_in_curr_seq)+1, 2,
                                         obs_len))
-        human_seq_feature = np.zeros((len(peds_in_curr_seq), human_states[0].shape[1]-1, obs_len)) # remove human id
-        robot_seq_feature = np.zeros((1, robot_state[0].shape[1], obs_len)) 
-        for i, ped_id in enumerate([0]+peds_in_curr_seq):
+        human_seq_feature = torch.zeros((len(peds_in_curr_seq), human_states[0].shape[1]-1, obs_len)) # remove human id
+        robot_seq_feature = torch.zeros((1, robot_state[0].shape[1], obs_len)) 
+        for i, ped_id in enumerate([0]+peds_in_curr_seq.tolist()):
             if ped_id == 0: # robot
-                curr_robot_seq = np.concatenate(robot_state, axis=0)
-                robot_seq_feature[i, :, :] = np.transpose(curr_ped_seq)
-                curr_ped_seq = np.transpose(curr_robot_seq[:, :2])
+                curr_robot_seq = torch.cat([*robot_state], dim=0)
+                robot_seq_feature[i, :, :] = curr_robot_seq.t()
+                curr_ped_seq = curr_robot_seq[:, :2].t()
             else:
                 curr_ped_seq = curr_seq_humans[curr_seq_humans[:, 0] ==
                                                     ped_id, :]
-                human_seq_feature[i-1, :, :] = np.transpose(curr_ped_seq[:, 1:]) # remove human id
-                curr_ped_seq = np.around(curr_ped_seq, decimals=4)
+                human_seq_feature[i-1, :, :] = curr_ped_seq[:, 1:].t() # remove human id
+                curr_ped_seq = torch.round(curr_ped_seq, decimals=4)
                 if len(curr_ped_seq) != obs_len:
                     raise NotImplementedError
-                curr_ped_seq = np.transpose(curr_ped_seq[:, 1:3])
+                curr_ped_seq = curr_ped_seq[:, 1:3].t()
             # Make coordinates relative
-            rel_curr_ped_seq = np.zeros(curr_ped_seq.shape)
+            rel_curr_ped_seq = torch.zeros(curr_ped_seq.shape)
             rel_curr_ped_seq[:, 1:] = \
                 curr_ped_seq[:, 1:] - curr_ped_seq[:, :-1]
             curr_seq_rel[i, :, :] = rel_curr_ped_seq
 
-
-        # Convert numpy -> Torch Tensor
-        curr_seq_rel_tensor = torch.from_numpy(
-            curr_seq_rel[:, :, :obs_len]).type(torch.float)
         #Convert to Graphs
-        a_ = self.seq_to_attrgraph(curr_seq_rel_tensor,self.norm_lap_matr)
+        a_ = self.seq_to_attrgraph(curr_seq_rel,self.norm_lap_matr)
         vh_ = self.seq_to_nodes(human_seq_feature)
         vr_ = self.seq_to_nodes(robot_seq_feature)
         return [vr_, vh_], a_
