@@ -121,17 +121,17 @@ class CrowdSim(gym.Env):
     def set_robot(self, robot):
         self.robot = robot
 
-    def generate_human(self, human=None):
+    def generate_human(self, _id, human=None):
         if self.current_scenario == 'circle_crossing':
-            human = self.random_circle_crossing_human()
+            human = self.random_circle_crossing_human(_id)
 
         elif self.current_scenario == 'square_crossing':
-            human = self.random_square_crossing_human()
+            human = self.random_square_crossing_human(_id)
 
         return human
 
-    def random_circle_crossing_human(self):
-        human = Human(self.config, 'humans')
+    def random_circle_crossing_human(self, _id):
+        human = Human(_id, self.config, 'humans')
         human.sample_random_attributes()
         while True:
             angle = np.random.random() * np.pi * 2
@@ -157,8 +157,8 @@ class CrowdSim(gym.Env):
         return human
 
 
-    def random_square_crossing_human(self):
-        human = Human(self.config, 'humans')
+    def random_square_crossing_human(self, _id):
+        human = Human(_id, self.config, 'humans')
         human.sample_random_attributes()
 
         if np.random.random() > 0.5:
@@ -332,8 +332,10 @@ class CrowdSim(gym.Env):
                 self.humans.append(self.random_circle_crossing_human())
                 
         else:
+            _id = 1
             for _ in range(human_num):
-                self.humans.append(self.generate_human())
+                self.humans.append(self.generate_human(_id))
+                _id+=1
 
 
     def generate_human_pair(self):
@@ -524,11 +526,14 @@ class CrowdSim(gym.Env):
         if agent == self.robot:
             ob = []
             for human in self.humans:
-                ob.append(human.get_observable_state())
+                # ob.append(human.get_observable_state())
+                ob.append(human.get_id_observable_state())
         else:
-            ob = [other_human.get_observable_state() for other_human in self.humans if other_human != agent]
+            # ob = [other_human.get_observable_state() for other_human in self.humans if other_human != agent]
+            ob = [other_human.get_id_observable_state() for other_human in self.humans if other_human != agent]
             if self.robot.visible:
-                ob += [self.robot.get_observable_state()]
+                # ob += [self.robot.get_observable_state()]
+                ob += [self.robot.get_id_observable_state()]
         return ob
 
     def render(self, mode='video', output_file=None, info=False):

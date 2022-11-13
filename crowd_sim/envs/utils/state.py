@@ -93,7 +93,8 @@ class HumanState(object):
 
 
 class ObservableState(object):
-    def __init__(self, px, py, vx, vy, radius):
+    def __init__(self, px, py, vx, vy, radius, id=None):
+        self.id = id
         self.px = px
         self.py = py
         self.vx = vx
@@ -111,6 +112,9 @@ class ObservableState(object):
 
     def to_tuple(self):
         return self.px, self.py, self.vx, self.vy, self.radius
+    
+    def to_id_tuple(self):
+        return self.id, self.px, self.py, self.vx, self.vy
 
 
 class JointState(object):

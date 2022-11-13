@@ -2,6 +2,7 @@ import os
 import logging
 import copy
 import torch
+import numpy as np
 from tqdm import tqdm
 from torch_geometric.data import HeteroData
 from itertools import combinations
@@ -81,7 +82,10 @@ class Explorer(object):
             if update_memory:
                 if isinstance(info, ReachGoal) or isinstance(info, Collision):
                     # only add positive(success) or negative(collision) experience in experience set
-                    self.update_memory(states, actions, rewards, imitation_learning)
+                    if self.target_policy.name=='SSTGCNN_RL':
+                        self.update_temporal_memory(states, actions, rewards, imitation_learning)
+                    else:
+                        self.update_memory(states, actions, rewards, imitation_learning)
 
             cumulative_rewards.append(sum([pow(self.gamma, t * self.robot.time_step * self.robot.v_pref)
                                            * reward for t, reward in enumerate(rewards)]))
@@ -145,12 +149,84 @@ class Explorer(object):
             # state = state.to(self.device)
             # next_state = next_state.to(self.device)
 
-            if self.target_policy.name == 'ModelPredictiveRL':
+            if self.target_policy.name == 'ModelPredictiveRL' or self.target_policy.name == 'SSTGCNN_RL':
                 self.memory.push((state[0], state[1], value, reward, next_state[0], next_state[1]))
             elif self.target_policy.name == 'DGCNRL':
                 self.memory.push((self.target_policy.to_graph((state[0], state[1])), value, reward, self.target_policy.to_graph((next_state[0], next_state[1]))))
             else:
                 self.memory.push((state, value, reward, next_state))
+
+    def update_temporal_memory(self, states, actions, rewards, imitation_learning=False):
+        if self.memory is None or self.gamma is None:
+            raise ValueError('Memory or gamma value is not set!')
+        
+        graphs, adj_matrixs = [], []
+        for i, state in enumerate(states):
+            # VALUE UPDATE
+            if imitation_learning:
+                # define the value of states in IL as cumulative discounted rewards, which is the same in RL
+                state = self.target_policy.transform(state)
+            self.memory.push_temporal(state)
+            if self.memory.temporal_memory_fill():
+                graph, adj = self.to_graph(state)
+
+                graphs.append(graph)
+                adj_matrixs.append(adj)
+
+        for i, graph in enumerate(graphs[:-1]):
+            reward = rewards[i]
+            if imitation_learning:
+                value = sum([pow(self.gamma, (t - i) * self.robot.time_step * self.robot.v_pref) * reward *
+                             (1 if t >= i else 0) for t, reward in enumerate(rewards)])
+            else:
+                if i == len(states) - 1:
+                    # terminal state
+                    value = reward
+                else:
+                    value = 0
+            value = torch.Tensor([value]).to(self.device)
+            reward = torch.Tensor([rewards[i]]).to(self.device)
+
+            self.memory.push((graph[0], graph[1], adj_matrixs[i], value, reward, graphs[i+1][0], graphs[i+1][1], adj_matrixs[i+1]))
+    
+    def to_graph(self, state):
+        robot_state, human_states = state
+        curr_seq_humans = np.concatenate(self.memory.temporal_memory['humans'], axis=0)
+        peds_in_curr_seq = np.unique(curr_seq_humans[:, 0])
+        curr_seq_rel = np.zeros((len(peds_in_curr_seq)+1, 2,
+                                        self.memory.obs_len))
+        human_seq_feature = np.zeros((len(peds_in_curr_seq), human_states.shape[1]-1, self.memory.obs_len)) # remove human id
+        robot_seq_feature = np.zeros((1, robot_state.shape[1], self.memory.obs_len)) 
+        for i, ped_id in enumerate([0]+peds_in_curr_seq.tolist()):
+            if ped_id == 0: # robot
+                curr_robot_seq = np.concatenate(self.memory.temporal_memory['robot'], axis=0)
+                robot_seq_feature[i, :, :] = np.transpose(curr_robot_seq)
+                curr_ped_seq = np.transpose(curr_robot_seq[:, :2])
+            else:
+                curr_ped_seq = curr_seq_humans[curr_seq_humans[:, 0] ==
+                                                    ped_id, :]
+                human_seq_feature[i-1, :, :] = np.transpose(curr_ped_seq[:, 1:]) # remove human id
+                curr_ped_seq = np.around(curr_ped_seq, decimals=4)
+                if len(curr_ped_seq) != self.memory.obs_len:
+                    raise NotImplementedError
+                curr_ped_seq = np.transpose(curr_ped_seq[:, 1:3])
+            # Make coordinates relative
+            rel_curr_ped_seq = np.zeros(curr_ped_seq.shape)
+            rel_curr_ped_seq[:, 1:] = \
+                curr_ped_seq[:, 1:] - curr_ped_seq[:, :-1]
+            curr_seq_rel[i, :, :] = rel_curr_ped_seq
+
+
+        # Convert numpy -> Torch Tensor
+        curr_seq_rel_tensor = torch.from_numpy(
+            curr_seq_rel[:, :, :self.memory.obs_len]).type(torch.float)
+        #Convert to Graphs
+        a_ = self.target_policy.seq_to_attrgraph(curr_seq_rel_tensor,self.target_policy.norm_lap_matr)
+        vh_ = self.target_policy.seq_to_nodes(human_seq_feature)
+        vr_ = self.target_policy.seq_to_nodes(robot_seq_feature)
+        return [vr_, vh_], a_
+            
+
 
     def log(self, tag_prefix, global_step):
         sr, cr, time, reward, avg_return = self.statistics

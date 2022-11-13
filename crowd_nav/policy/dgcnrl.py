@@ -93,7 +93,10 @@ class DGCNRL(ModelPredictiveRL):
         self.time_step = time_step
         self.model.time_step = time_step
 
-    def load_model(self, state_dict):
+    def get_state_dict(self):
+        return self.model.state_dict()
+    
+    def load_state_dict(self, state_dict):
         self.model.load_state_dict(state_dict)
 
     def predict(self, state):

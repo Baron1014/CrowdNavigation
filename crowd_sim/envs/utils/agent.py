@@ -76,6 +76,9 @@ class Agent(object):
     def get_observable_state(self):
         return ObservableState(self.px, self.py, self.vx, self.vy, self.radius)
     
+    def get_id_observable_state(self):
+        return ObservableState(self.px, self.py, self.vx, self.vy, self.radius, self.id)
+    
     def get_observable_state_list(self):
         return [self.px, self.py, self.vx, self.vy, self.radius]
 

@@ -3,9 +3,9 @@ from crowd_sim.envs.utils.state import HumanState, JointState
 from crowd_sim.envs.utils.robot import Robot
 
 class Human(Agent):
-    def __init__(self, config, section, static=False):
+    def __init__(self, _id, config, section, static=False):
         super().__init__(config, section)
-        self.id = None
+        self.id = _id
         self.interaction = None
         self.static = static
         self.radius = getattr(config, section).radius

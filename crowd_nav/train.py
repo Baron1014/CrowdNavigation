@@ -10,8 +10,8 @@ import wandb
 from configs import logger
 from configs import config as global_config
 from crowd_sim.envs.utils.robot import Robot
-from crowd_nav.utils.trainer import MPRLTrainer, VNRLTrainer, GRAPHTrainer
-from crowd_nav.utils.memory import ReplayMemory
+from crowd_nav.utils.trainer import MPRLTrainer, VNRLTrainer, GRAPHTrainer, TGRLTrainer
+from crowd_nav.utils.memory import ReplayMemory, TemporalMemory
 from crowd_nav.utils.explorer import Explorer
 from crowd_nav.policy.policy_factory import policy_factory
 
@@ -46,6 +46,7 @@ def main(args):
                 make_new_dir = False
     if make_new_dir:
         pocliy_config = {
+            'social_stgcnn': 'configs/social_stgcnn.py',
             'dgcnrl': 'configs/dgcnrl.py',
             'sstgcn': 'configs/sstgcn.py',
             'rgl': 'configs/rgl.py',
@@ -105,7 +106,7 @@ def main(args):
     checkpoint_interval = train_config.train.checkpoint_interval
 
     # configure trainer and explorer
-    memory = ReplayMemory(capacity)
+    memory = TemporalMemory(capacity) if args.policy=='social_stgcnn' else ReplayMemory(capacity)
     model = policy.get_model()
     batch_size = train_config.trainer.batch_size
     optimizer = train_config.trainer.optimizer
@@ -117,6 +118,8 @@ def main(args):
                               share_graph_model=policy_config.model_predictive_rl.share_graph_model)
     elif policy_config.name == 'dgcnrl':
         trainer = GRAPHTrainer(model, memory, device, policy, batch_size, optimizer, writer)
+    elif policy_config.name == 'social_stgcnn':
+        trainer = TGRLTrainer(model, memory, device, policy, batch_size, optimizer, writer)
     else:
         trainer = VNRLTrainer(model, memory, device, policy, batch_size, optimizer, writer)
     explorer = Explorer(env, robot, device, writer, memory, policy.gamma, target_policy=policy)
@@ -233,7 +236,7 @@ if __name__ == '__main__':
     parser.add_argument('--debug', default=False, action='store_true')
     parser.add_argument('--randomseed', type=int, default=17)
     parser.add_argument('--wandb', default=False, action='store_true')
-    parser.add_argument('--policy', type=str, default='dgcnrl')
+    parser.add_argument('--policy', type=str, default='social_stgcnn')
 
     sys_args = parser.parse_args()
 
