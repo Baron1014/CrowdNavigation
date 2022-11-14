@@ -4,7 +4,6 @@ from crowd_nav.configs import rgl
 class EnvConfig(rgl.EnvConfig):
     def __init__(self, debug=False):
         super(EnvConfig, self).__init__(debug)
-        self.robot.obs_len = 4
 
 
 class PolicyConfig(rgl.PolicyConfig):

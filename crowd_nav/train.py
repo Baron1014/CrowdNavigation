@@ -31,7 +31,7 @@ def main(args):
     writer = None
     train_cg = global_config.BaseTrainConfig()
     if args.wandb:
-        wandb.init(project=train_cg.wan.project, entity=train_cg.wan.entity, config=args)
+        wandb.init(project=train_cg.wan.project, entity=train_cg.wan.entity, config=args, name=args.wandb_display_name)
         writer = wandb
 
     make_new_dir = True
@@ -176,7 +176,7 @@ def main(args):
         logging.info('Evaluate the model instantly after imitation learning on the validation cases')
         explorer.run_k_episodes(env.case_size['val'], 'val', episode=episode)
         if writer!=None:
-            explorer.log('val', episode // evaluation_interval)
+            explorer.log('val', episode)
 
     episode = 0
     while episode < train_episodes:
@@ -203,7 +203,7 @@ def main(args):
         if episode % evaluation_interval == 0:
             _, _, _, reward, _ = explorer.run_k_episodes(env.case_size['val'], 'val', episode=episode)
             if writer!=None:
-                explorer.log('val', episode // evaluation_interval)
+                explorer.log('val', episode)
 
             if episode % checkpoint_interval == 0 and reward > best_val_reward:
                 best_val_reward = reward
@@ -236,6 +236,7 @@ if __name__ == '__main__':
     parser.add_argument('--debug', default=False, action='store_true')
     parser.add_argument('--randomseed', type=int, default=17)
     parser.add_argument('--wandb', default=False, action='store_true')
+    parser.add_argument('--wandb_display_name', '-wdn', type=str, default=None)
     parser.add_argument('--policy', type=str, default='social_stgcnn')
 
     sys_args = parser.parse_args()

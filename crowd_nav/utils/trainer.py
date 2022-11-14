@@ -333,7 +333,7 @@ class TGRLTrainer(GRAPHTrainer):
             # self.data_loader = TemporalDataLoader(self.memory.get_graph_memory(), self.batch_size)
         
         average_epoch_loss = 0
-        for epoch in range(5):
+        for epoch in range(num_epochs):
             epoch_loss = 0
             logging.debug('{}-th epoch starts'.format(epoch))
             for data in self.data_loader:

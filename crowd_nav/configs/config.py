@@ -49,6 +49,7 @@ class BaseEnvConfig(object):
     robot.visible = False
     robot.policy = 'none'
     robot.radius = 0.3
+    robot.obs_len = 4
     if robot.radius is None:
         robot.width = 0.5
         robot.length = 0.8
