@@ -142,6 +142,26 @@ class JointState(object):
             human_states_tensor.to(device)
 
         return robot_state_tensor, human_states_tensor
+    
+    def to_id_tensor(self, add_batch_size=False, device=None):
+        robot_state_tensor = torch.Tensor([self.robot_state.to_tuple()])
+        if len(self.human_states)!=0:
+            human_states_tensor = torch.Tensor([human_state.to_id_tuple() for human_state in self.human_states])
+        else:
+            human_states_tensor = torch.Tensor([])
+
+        if add_batch_size:
+            robot_state_tensor = robot_state_tensor.unsqueeze(0)
+            human_states_tensor = human_states_tensor.unsqueeze(0)
+
+        if device == torch.device('cuda:0'):
+            robot_state_tensor = robot_state_tensor.cuda()
+            human_states_tensor = human_states_tensor.cuda()
+        elif device is not None:
+            robot_state_tensor.to(device)
+            human_states_tensor.to(device)
+
+        return robot_state_tensor, human_states_tensor
 
 class ObservableState_noV(object):
     def __init__(self, px, py, radius):

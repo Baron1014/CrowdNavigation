@@ -179,11 +179,15 @@ class social_stgcnn(nn.Module):
         
     def forward(self,rv,hv,a):
         robot_state_embedings = self.w_r(rv)
-        human_state_embedings = self.w_h(hv)
-        v = torch.cat([robot_state_embedings, human_state_embedings], dim=2)
-        v = v.permute(0,3,1,2)
-        for k in range(self.n_stgcnn):
-            v,a = self.st_gcns[k](v,a)
+        # if have humans just doing st_gcns
+        if a.shape[-1]!=0:
+            human_state_embedings = self.w_h(hv)
+            v = torch.cat([robot_state_embedings, human_state_embedings], dim=2)
+            v = v.permute(0,3,1,2)
+            for k in range(self.n_stgcnn):
+                v,a = self.st_gcns[k](v,a)
+        else:
+            v = robot_state_embedings.permute(0,3,1,2).contiguous()
             
         v = v.view(v.shape[0],v.shape[2],v.shape[1],v.shape[3])
         
@@ -194,8 +198,9 @@ class social_stgcnn(nn.Module):
             
         v = self.tpcnn_ouput(v)
         v = v.view(v.shape[0],v.shape[2],v.shape[1],v.shape[3])
-        v = v.squeeze()
-        value = self.value_network(v[:, 0]) # robot state dim
+        robot_state_dim = v[:, :, :, 0]
+        robot_state_dim = robot_state_dim.squeeze()
+        value = self.value_network(robot_state_dim) # robot state dim
         
         return value
 
@@ -247,10 +252,10 @@ class SSTGCNN_RL(DGCNRL):
         """
         # memory state
         self_states, humans_states = [], []
-        for i in range(len(ego_memory_state)):
-            self_states.append(torch.Tensor([ego_memory_state[i].robot_state.to_tuple()]).to(self.device))
-            humans_states.append(torch.Tensor([human_state.to_id_tuple() for human_state in ego_memory_state[i].human_states]). \
-                    to(self.device))
+        for i in [-2, -1]: # closest 2 memory
+            self_states.append(ego_memory_state['ego'][i].to(self.device))
+            humans_states.append(ego_memory_state['humans'][i].to(self.device))
+        # current state
         self_states.append(torch.Tensor([state.robot_state.to_tuple()]).to(self.device))
         humans_states.append(torch.Tensor([human_state.to_id_tuple() for human_state in state.human_states]). \
                     to(self.device))
@@ -264,9 +269,9 @@ class SSTGCNN_RL(DGCNRL):
             return ActionXY(0, 0) if self.kinematics == 'holonomic' else ActionRot(0, 0)
         if self.action_space is None:
             self.build_action_space(state.robot_state.v_pref)
-        if not state.human_states:
-            assert self.phase != 'train'
-            return self.select_greedy_action(state.robot_state)
+        # if not state.human_states:
+        #     assert self.phase != 'train'
+        #     return self.select_greedy_action(state.robot_state)
 
         probability = np.random.random()
         if self.phase == 'train' and probability < self.epsilon:
@@ -304,34 +309,43 @@ class SSTGCNN_RL(DGCNRL):
     def to_graph(self, state):
         robot_state, human_states = state
         obs_len = len(robot_state)
-        curr_seq_humans = torch.cat([*human_states], dim=0)
-        peds_in_curr_seq = torch.unique(curr_seq_humans[:, 0])
-        curr_seq_rel = torch.zeros((len(peds_in_curr_seq)+1, 2,
-                                        obs_len))
-        human_seq_feature = torch.zeros((len(peds_in_curr_seq), human_states[0].shape[1]-1, obs_len)) # remove human id
-        robot_seq_feature = torch.zeros((1, robot_state[0].shape[1], obs_len)) 
-        for i, ped_id in enumerate([0]+peds_in_curr_seq.tolist()):
-            if ped_id == 0: # robot
-                curr_robot_seq = torch.cat([*robot_state], dim=0)
-                robot_seq_feature[i, :, :] = curr_robot_seq.t()
-                curr_ped_seq = curr_robot_seq[:, :2].t()
-            else:
-                curr_ped_seq = curr_seq_humans[curr_seq_humans[:, 0] ==
-                                                    ped_id, :]
-                human_seq_feature[i-1, :, :] = curr_ped_seq[:, 1:].t() # remove human id
-                curr_ped_seq = torch.round(curr_ped_seq, decimals=4)
-                if len(curr_ped_seq) != obs_len:
-                    raise NotImplementedError
-                curr_ped_seq = curr_ped_seq[:, 1:3].t()
-            # Make coordinates relative
-            rel_curr_ped_seq = torch.zeros(curr_ped_seq.shape)
-            rel_curr_ped_seq[:, 1:] = \
-                curr_ped_seq[:, 1:] - curr_ped_seq[:, :-1]
-            curr_seq_rel[i, :, :] = rel_curr_ped_seq
+        robot_seq_feature = torch.zeros((1, robot_state[0].shape[1], obs_len))
+        if len(human_states[-1])!=0:
+            curr_seq_humans = torch.cat([*human_states], dim=0)
+            peds_in_curr_seq = torch.unique(curr_seq_humans[:, 0])
+            curr_seq_rel = torch.zeros((len(peds_in_curr_seq)+1, 2,
+                                            obs_len))
+            human_seq_feature = torch.zeros((len(peds_in_curr_seq), human_states[-1].shape[1]-1, obs_len)) # remove human id
+            for i, ped_id in enumerate([0]+peds_in_curr_seq.tolist()):
+                if ped_id == 0: # robot
+                    curr_robot_seq = torch.cat([*robot_state], dim=0)
+                    robot_seq_feature[i, :, :] = curr_robot_seq.t()
+                    curr_ped_seq = curr_robot_seq[:, :2].t()
+                else:
+                    curr_ped_seq = curr_seq_humans[curr_seq_humans[:, 0] ==
+                                                        ped_id, :]
+                    # if observate lens is not enough just fill last state
+                    if len(curr_ped_seq) != obs_len:
+                        last_ped_state = curr_ped_seq[-1, :].unsqueeze(0)
+                        fill_state_num = obs_len - len(curr_ped_seq)
+                        for _ in range(fill_state_num):
+                            curr_ped_seq = torch.cat((curr_ped_seq, last_ped_state), dim=0)
+                    human_seq_feature[i-1, :, :] = curr_ped_seq[:, 1:].t() # remove human id
+                    curr_ped_seq = torch.round(curr_ped_seq, decimals=4)
+                    curr_ped_seq = curr_ped_seq[:, 1:3].t()
+                # Make coordinates relative
+                rel_curr_ped_seq = torch.zeros(curr_ped_seq.shape)
+                rel_curr_ped_seq[:, 1:] = \
+                    curr_ped_seq[:, 1:] - curr_ped_seq[:, :-1]
+                curr_seq_rel[i, :, :] = rel_curr_ped_seq
 
-        #Convert to Graphs
-        a_ = self.seq_to_attrgraph(curr_seq_rel,self.norm_lap_matr).to(self.device)
-        vh_ = self.seq_to_nodes(human_seq_feature).to(self.device)
+                #Convert to Graphs
+                a_ = self.seq_to_attrgraph(curr_seq_rel,self.norm_lap_matr).to(self.device)
+                vh_ = self.seq_to_nodes(human_seq_feature).to(self.device)
+        else:
+            a_ = torch.tensor([]).to(self.device)
+            vh_ = torch.tensor([]).to(self.device)
+
         vr_ = self.seq_to_nodes(robot_seq_feature).to(self.device)
         return [vr_, vh_], a_
     

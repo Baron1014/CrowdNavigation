@@ -35,11 +35,16 @@ class Agent(object):
         if section == 'robot':
             self.width = config.robot.width
             self.length = config.robot.length
+            self.FoV = np.pi * config.robot.FOV
         self.size = [self.radius]  if self.radius is not None else [self.width, self.length]
 
     def print_info(self):
         logging.info('Agent is {} and has {} kinematic constraint'.format(
             'visible' if self.visible else 'invisible', self.kinematics))
+        logging.info('Robot sensor use {}'.format(self.sensor))
+        if self.sensor=='RGBD':
+            logging.info('Robot FOV: {:.4f}/rad'.format(self.FoV))
+     
 
     def set_policy(self, policy):
         if self.time_step is None:
