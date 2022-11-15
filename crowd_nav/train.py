@@ -11,7 +11,7 @@ from configs import logger
 from configs import config as global_config
 from crowd_sim.envs.utils.robot import Robot
 from crowd_nav.utils.trainer import MPRLTrainer, VNRLTrainer, GRAPHTrainer, TGRLTrainer
-from crowd_nav.utils.memory import ReplayMemory, TemporalMemory
+from crowd_nav.utils.memory import ReplayMemory
 from crowd_nav.utils.explorer import Explorer
 from crowd_nav.policy.policy_factory import policy_factory
 
@@ -106,7 +106,7 @@ def main(args):
     checkpoint_interval = train_config.train.checkpoint_interval
 
     # configure trainer and explorer
-    memory = TemporalMemory(capacity) if args.policy=='social_stgcnn' else ReplayMemory(capacity)
+    memory = ReplayMemory(capacity)
     model = policy.get_model()
     batch_size = train_config.trainer.batch_size
     optimizer = train_config.trainer.optimizer

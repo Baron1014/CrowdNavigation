@@ -172,9 +172,10 @@ class Explorer(object):
             if imitation_learning:
                 # define the value of states in IL as cumulative discounted rewards, which is the same in RL
                 state = self.target_policy.transform(state)
-            self.memory.push_temporal(state)
-            if self.memory.temporal_memory_fill():
-                graph, adj = self.to_graph(state)
+            self.robot.push_ego_memory(state)
+            if self.robot.ego_memory_fill():
+                state = self.robot.get_ego_jointstate()
+                graph, adj = self.target_policy.to_graph(state)
 
                 graphs.append(graph)
                 adj_matrixs.append(adj)
@@ -195,39 +196,6 @@ class Explorer(object):
 
             self.memory.push((graph[0], graph[1], adj_matrixs[i], value, reward, graphs[i+1][0], graphs[i+1][1], adj_matrixs[i+1]))
     
-    def to_graph(self, state):
-        robot_state, human_states = state
-        curr_seq_humans = torch.cat([*self.memory.temporal_memory['humans']], dim=0)
-        peds_in_curr_seq = torch.unique(curr_seq_humans[:, 0])
-        curr_seq_rel = torch.zeros((len(peds_in_curr_seq)+1, 2,
-                                        self.memory.obs_len))
-        human_seq_feature = torch.zeros((len(peds_in_curr_seq), human_states.shape[1]-1, self.memory.obs_len)) # remove human id
-        robot_seq_feature = torch.zeros((1, robot_state.shape[1], self.memory.obs_len)) 
-        for i, ped_id in enumerate([0]+peds_in_curr_seq.tolist()):
-            if ped_id == 0: # robot
-                curr_robot_seq = torch.cat([*self.memory.temporal_memory['robot']], dim=0)
-                robot_seq_feature[i, :, :] = curr_robot_seq.t()
-                curr_ped_seq = curr_robot_seq[:, :2].t()
-            else:
-                curr_ped_seq = curr_seq_humans[curr_seq_humans[:, 0] ==
-                                                    ped_id, :]
-                human_seq_feature[i-1, :, :] = curr_ped_seq[:, 1:].t() # remove human id
-                curr_ped_seq = torch.round(curr_ped_seq, decimals=4)
-                if len(curr_ped_seq) != self.memory.obs_len:
-                    raise NotImplementedError
-                curr_ped_seq = curr_ped_seq[:, 1:3].t()
-            # Make coordinates relative
-            rel_curr_ped_seq = torch.zeros(curr_ped_seq.shape)
-            rel_curr_ped_seq[:, 1:] = \
-                curr_ped_seq[:, 1:] - curr_ped_seq[:, :-1]
-            curr_seq_rel[i, :, :] = rel_curr_ped_seq
-
-        #Convert to Graphs
-        a_ = self.target_policy.seq_to_attrgraph(curr_seq_rel,self.target_policy.norm_lap_matr).to(self.device)
-        vh_ = self.target_policy.seq_to_nodes(human_seq_feature).to(self.device)
-        vr_ = self.target_policy.seq_to_nodes(robot_seq_feature).to(self.device)
-        return [vr_, vh_], a_
-            
 
 
     def log(self, tag_prefix, global_step):
