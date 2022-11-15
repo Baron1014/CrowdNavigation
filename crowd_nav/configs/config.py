@@ -58,6 +58,7 @@ class BaseEnvConfig(object):
         robot.length = None
     robot.v_pref = 1
     robot.sensor = 'coordinates'
+    robot.FOV = 0.7
 
     def __init__(self, debug=False):
         if debug:

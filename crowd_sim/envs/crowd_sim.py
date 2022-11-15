@@ -152,7 +152,8 @@ class CrowdSim(gym.Env):
                     break
             if not collide:
                 break
-        human.set(px, py, -px*4, -py*4, 0, 0, 0)
+        # human.set(px, py, -px*4, -py*4, 0, 0, 0)
+        human.set(px, py, -px, -py, 0, 0, 0)
 
         return human
 
@@ -231,6 +232,15 @@ class CrowdSim(gym.Env):
         
         return human
 
+    def generate_robot(self):
+        while True:
+            px, py, gx = np.random.uniform(-self.circle_radius, self.circle_radius, 3)
+            # always to up
+            gy = np.random.uniform(self.circle_radius-1, self.circle_radius+1)
+            if np.linalg.norm([px - gx, py - gy]) >= 10:
+                break
+        self.robot.set(px, py, gx, gy, 0, 0, np.pi/2)
+        
 
     def reset(self, phase='test', test_case=None):
         """
@@ -250,13 +260,14 @@ class CrowdSim(gym.Env):
                      'val': 0, 'test': self.case_capacity['val']}
 
         # (px, py, gx, gy, vx, vy, theta)
-        self.robot.set(0, -self.circle_radius, 0, self.circle_radius, 0, 0, 0)
+        # self.robot.set(0, -self.circle_radius, 0, self.circle_radius, 0, 0, 0)
+        self.generate_robot()
         if self.case_counter[phase] >= 0:
             self._seed = base_seed[phase] + self.case_counter[phase]
             np.random.seed(self._seed)
             random.seed(self._seed)
             if phase == 'test':
-                logging.debug('current test seed is:{}'.format(self._seed))
+                logging.info('current test seed is:{}'.format(self._seed))
             if not self.robot.policy.multiagent_training and phase in ['train', 'val']:
                 # only CADRL trains in circle crossing simulation
                 human_num = 1
@@ -306,8 +317,8 @@ class CrowdSim(gym.Env):
         # get current observation
         if self.robot.sensor == 'coordinates':
             ob = self.compute_observation_for(self.robot)
-        elif self.robot.sensor == 'RGB':
-            raise NotImplementedError
+        elif self.robot.sensor == 'RGBD':
+            ob, _ = self.compute_fov_observation_for()
 
         return ob
     
@@ -332,10 +343,8 @@ class CrowdSim(gym.Env):
                 self.humans.append(self.random_circle_crossing_human())
                 
         else:
-            _id = 1
-            for _ in range(human_num):
-                self.humans.append(self.generate_human(_id))
-                _id+=1
+            for id in range(human_num):
+                self.humans.append(self.generate_human(id+1))
 
 
     def generate_human_pair(self):
@@ -414,7 +423,7 @@ class CrowdSim(gym.Env):
             ey = py + vy * self.time_step
             # closest distance between boundaries of two agents
             # robot_dist = (self.robot.width**2+self.robot.length**2)**0.5
-            closest_dist = point_to_segment_dist(px, py, ex, ey, 0, 0) - human.radius
+            closest_dist = point_to_segment_dist(px, py, ex, ey, 0, 0) - human.radius - self.robot.radius
             # closest_x, closest_y = point_to_clostest(px, py, ex, ey, 0, 0)
             # closest_dist = getCloestEdgeDist(closest_x, closest_y, 0, 0, self.robot.width/2, self.robot.length/2) - human.radius
             if closest_dist<0:
@@ -453,7 +462,7 @@ class CrowdSim(gym.Env):
 
         # check if reaching the goal
         # goal_delta_x, goal_delta_y = end_position - np.array(self.robot.get_goal_position())
-        reaching_goal = norm(end_position - np.array(self.robot.get_goal_position())) < closest_dist
+        reaching_goal = norm(end_position - np.array(self.robot.get_goal_position())) < self.robot.radius
         # reaching_goal = True if abs(goal_delta_x) < self.robot.width/2 and abs(goal_delta_y) < self.robot.length/2 else False
 
         if self.global_time >= self.time_limit - 1:
@@ -501,7 +510,7 @@ class CrowdSim(gym.Env):
             for human, action in zip(self.humans, human_actions):
                 human.step(action)
                 if self.nonstop_human and human.reached_destination():
-                    self.generate_human(human)
+                    self.update_human_goal(human)
 
             self.global_time += self.time_step
             self.states.append([self.robot.get_full_state(), [human.get_full_state() for human in self.humans],
@@ -512,8 +521,8 @@ class CrowdSim(gym.Env):
             # compute the observation
             if self.robot.sensor == 'coordinates':
                 ob = self.compute_observation_for(self.robot)
-            elif self.robot.sensor == 'RGB':
-                raise NotImplementedError
+            elif self.robot.sensor == 'RGBD':
+                ob, _ = self.compute_fov_observation_for()
         else:
             if self.robot.sensor == 'coordinates':
                 ob = [human.get_next_observable_state(action) for human, action in zip(self.humans, human_actions)]
@@ -521,6 +530,68 @@ class CrowdSim(gym.Env):
                 raise NotImplementedError
 
         return ob, reward, done, info
+    
+    def update_human_goal(self, human):
+        while True:
+            humans_other = []
+            for h in self.humans:
+                if h != human:
+                    humans_other.append(h)
+            angle = np.random.random() * np.pi * 2
+            # add some noise to simulate all the possible cases robot could meet with human
+            v_pref = 1.0 if human.v_pref == 0 else human.v_pref
+            gx_noise = (np.random.random() - 0.5) * v_pref
+            gy_noise = (np.random.random() - 0.5) * v_pref
+            gx = self.circle_radius * np.cos(angle) + gx_noise
+            gy = self.circle_radius * np.sin(angle) + gy_noise
+            collide = False
+            for agent in [self.robot] + humans_other:
+                min_dist = human.radius + agent.radius + self.discomfort_dist
+                if norm((gx - agent.px, gy - agent.py)) < min_dist or \
+                        norm((gx - agent.gx, gy - agent.gy)) < min_dist:
+                    collide = True
+                    break
+            if not collide:
+                break
+
+        # Give human new goal
+        human.gx = gx
+        human.gy = gy
+
+
+    def detect_visible(self, state1, state2):
+        if self.robot.kinematics == 'holonomic':
+            real_theta = np.arctan2(state1.vy, state1.vx)
+        else:
+            real_theta = state1.theta
+        # angle of center line of FOV of agent1
+        v_fov = [np.cos(real_theta), np.sin(real_theta)]
+
+        # angle between agent1 and agent2
+        v_12 = [state2.px - state1.px, state2.py - state1.py]
+        # angle between center of FOV and agent 2
+
+        v_fov = v_fov / np.linalg.norm(v_fov)
+        v_12 = v_12 / np.linalg.norm(v_12)
+
+        offset = np.arccos(np.clip(np.dot(v_fov, v_12), a_min=-1, a_max=1))
+
+        fov = self.robot.FoV
+        if np.abs(offset) <= fov / 2:
+            return True
+        else:
+            return False
+    
+    def compute_fov_observation_for(self):
+        ob, ob_ids = [], []
+        for i in range(self.human_num):
+            visible = self.detect_visible(self.robot, self.humans[i])
+            if visible:
+                ob.append(self.humans[i].get_id_observable_state())
+            ob_ids.append(visible)
+        
+        return ob, ob_ids
+
 
     def compute_observation_for(self, agent):
         if agent == self.robot:
@@ -629,24 +700,24 @@ class CrowdSim(gym.Env):
                                                 marker='o', linestyle='None', markersize=8)
                     ax.add_artist(human_start)
             # add robot start position
-            # robot_start = mlines.Line2D([self.robot.get_start_position()[0]], [self.robot.get_start_position()[1]],
-            #                             color=robot_color,
-            #                             marker='s', linestyle='None', markersize=8)
-            robot_start_position = [self.robot.get_start_position()[0], self.robot.get_start_position()[1]]
-            leftb_x, leftb_y = robot_start_position[0]-self.robot.width/2, robot_start_position[1]-self.robot.length/2
-            robot_start = plt.Rectangle((leftb_x, leftb_y), self.robot.width, self.robot.length, fill=True, color=robot_color)
+            robot_start = mlines.Line2D([self.robot.get_start_position()[0]], [self.robot.get_start_position()[1]],
+                                        color=robot_color,
+                                        marker='s', linestyle='None', markersize=8)
+            # robot_start_position = [self.robot.get_start_position()[0], self.robot.get_start_position()[1]]
+            # leftb_x, leftb_y = robot_start_position[0]-self.robot.width/2, robot_start_position[1]-self.robot.length/2
+            # robot_start = plt.Rectangle((leftb_x, leftb_y), self.robot.width, self.robot.length, fill=True, color=robot_color)
             ax.add_artist(robot_start)
             # add robot and its goal
             robot_positions = [state[0].position for state in self.states]
             goal = mlines.Line2D([self.robot.get_goal_position()[0]], [self.robot.get_goal_position()[1]],
                                  color=goal_color, marker='*', linestyle='None',
                                  markersize=15, label='Goal')
-            robot_left_positions = []
-            for x, y in robot_positions:
-                leftb_x, leftb_y = x-self.robot.width/2, y-self.robot.length/2
-                robot_left_positions.append((leftb_x, leftb_y))
-            robot = patches.Rectangle(robot_left_positions[frame], self.robot.width, self.robot.length, fill=False, color=robot_color, label='Robot', rotation_point='center')
-            # robot = plt.Circle(robot_positions[0], self.robot.radius, fill=False, color=robot_color, label='Robot')
+            # robot_left_positions = []
+            # for x, y in robot_positions:
+            #     leftb_x, leftb_y = x-self.robot.width/2, y-self.robot.length/2
+            #     robot_left_positions.append((leftb_x, leftb_y))
+            # robot = patches.Rectangle(robot_left_positions[frame], self.robot.width, self.robot.length, fill=False, color=robot_color, label='Robot', rotation_point='center')
+            robot = plt.Circle(robot_positions[0], self.robot.radius, fill=False, color=robot_color, label='Robot')
             # sensor_range = plt.Circle(robot_positions[0], self.robot_sensor_range, fill=False, ls='dashed')
             ax.add_artist(goal)
             ax.add_artist(robot)
@@ -764,7 +835,8 @@ class CrowdSim(gym.Env):
                 global_step = frame_num
                 if self.robot.kinematics == 'unicycle':
                     robot.set_angle(robot_theta[frame_num])
-                robot.set_xy(robot_left_positions[frame_num])
+                # robot.set_xy(robot_left_positions[frame_num])
+                robot.center = robot_positions[frame_num]
 
                 for i, human in enumerate(humans):
                     human.center = human_positions[frame_num][i]
