@@ -104,15 +104,14 @@ class Explorer(object):
             total_time = sum(success_times + collision_times + timeout_times)
             logging.info('Frequency of being in danger: %.2f and average min separate distance in danger: %.2f',
                          discomfort / total_time, average(min_dist))
-            if self.writer and phase=='test':
-                self.writer.run.summary[phase + '/success_rate'] = success_rate
-                self.writer.run.summary[phase + '/collision_rate'] = collision_rate
-                self.writer.run.summary[phase + '/time'] = avg_nav_time
-                self.writer.run.summary[phase + '/reward'] = average(cumulative_rewards)
-                self.writer.run.summary[phase + '/avg_return'] =  average(average_returns)
-                self.writer.run.summary[phase + '/frequency_in_danger'] =  discomfort / total_time
-                self.writer.run.summary[phase + '/avg_min_separate_dist'] =  average(min_dist)
-
+            if phase=='test':
+                self.writer.summary(phase + '/success_rate', success_rate)
+                self.writer.summary(phase + '/collision_rate', collision_rate)
+                self.writer.summary(phase + '/time', avg_nav_time)
+                self.writer.summary(phase + '/reward', average(cumulative_rewards))
+                self.writer.summary(phase + '/avg_return', average(average_returns))
+                self.writer.summary(phase + '/frequency_in_danger', discomfort / total_time)
+                self.writer.summary(phase + '/avg_min_separate_dist', average(min_dist))
 
         if print_failure:
             logging.info('Collision cases: ' + ' '.join([str(x) for x in collision_cases]))

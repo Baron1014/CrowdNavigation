@@ -24,15 +24,32 @@ def set_random_seeds(seed):
     torch.cuda.manual_seed_all(seed)
     return None
 
+class WandbWriter:
+    def __init__(self, args, config):
+        self.use_writer = args.wandb
+        if self.use_writer:
+            wandb.init(project=config.wan.project, entity=config.wan.entity, config=args, name=args.wandb_display_name)
+            self.writer = wandb
+        else:
+            self.writer = None
+        
+    def log(self, info, step):
+        if self.writer is not None:
+            self.writer.log(info, step=step)
+    
+    def summary(self, key, value):
+        self.writer.run.summary[key] = value
+    
+    def finish(self):
+        if self.writer is not None:
+            wandb.finish()
+    
 
 def main(args):
     set_random_seeds(args.randomseed)
     # configure paths
-    writer = None
     train_cg = global_config.BaseTrainConfig()
-    if args.wandb:
-        wandb.init(project=train_cg.wan.project, entity=train_cg.wan.entity, config=args, name=args.wandb_display_name)
-        writer = wandb
+    writer = WandbWriter(args, train_cg)
 
     make_new_dir = True
     if os.path.exists(args.output_dir):
@@ -175,8 +192,7 @@ def main(args):
     if episode % evaluation_interval == 0:
         logging.info('Evaluate the model instantly after imitation learning on the validation cases')
         explorer.run_k_episodes(env.case_size['val'], 'val', episode=episode)
-        if writer!=None:
-            explorer.log('val', episode)
+        explorer.log('val', episode)
 
     episode = 0
     while episode < train_episodes:
@@ -191,8 +207,7 @@ def main(args):
 
         # sample k episodes into memory and optimize over the generated memory
         explorer.run_k_episodes(sample_episodes, 'train', update_memory=True, episode=episode)
-        if writer!=None:
-            explorer.log('train', episode)
+        explorer.log('train', episode)
 
         trainer.optimize_batch(train_batches, episode)
         episode += 1
@@ -202,8 +217,7 @@ def main(args):
         # evaluate the model
         if episode % evaluation_interval == 0:
             _, _, _, reward, _ = explorer.run_k_episodes(env.case_size['val'], 'val', episode=episode)
-            if writer!=None:
-                explorer.log('val', episode)
+            explorer.log('val', episode)
 
             if episode % checkpoint_interval == 0 and reward > best_val_reward:
                 best_val_reward = reward
@@ -223,8 +237,7 @@ def main(args):
         logging.info('Save the best val model with the reward: {}'.format(best_val_reward))
     explorer.run_k_episodes(env.case_size['test'], 'test', episode=episode, print_failure=True)
 
-    if args.wandb:
-        wandb.finish()
+    writer.finish()
 
 
 if __name__ == '__main__':

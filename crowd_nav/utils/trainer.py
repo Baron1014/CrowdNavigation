@@ -100,9 +100,8 @@ class MPRLTrainer(object):
                     update_counter += 1
 
             logging.debug('{}-th epoch ends'.format(epoch))
-            if self.writer != None:
-                self.writer.log({'IL/epoch_v_loss': epoch_v_loss / len(self.memory)}, step=epoch)
-                self.writer.log({'IL/epoch_s_loss': epoch_s_loss / len(self.memory)}, step=epoch)
+            self.writer.log({'IL/epoch_v_loss': epoch_v_loss / len(self.memory)}, step=epoch)
+            self.writer.log({'IL/epoch_s_loss': epoch_s_loss / len(self.memory)}, step=epoch)
             logging.info('Average loss in epoch %d: value loss=%.2E, graph loss=%.2E', epoch, epoch_v_loss / len(self.memory),
                          epoch_s_loss / len(self.memory))
 
@@ -156,9 +155,8 @@ class MPRLTrainer(object):
         average_v_loss = v_losses / num_batches
         average_s_loss = s_losses / num_batches
         logging.info('Average loss : %.2E, %.2E', average_v_loss, average_s_loss)
-        if self.writer != None:
-            self.writer.log({'RL/average_v_loss': average_v_loss}, step=episode)
-            self.writer.log({'RL/average_s_loss': average_s_loss}, step=episode)
+        self.writer.log({'RL/average_v_loss': average_v_loss}, step=episode)
+        self.writer.log({'RL/average_s_loss': average_s_loss}, step=episode)
 
         return average_v_loss, average_s_loss
 
@@ -219,8 +217,7 @@ class VNRLTrainer(object):
                 epoch_loss += loss.data.item()
             logging.debug('{}-th epoch ends'.format(epoch))
             average_epoch_loss = epoch_loss / len(self.memory)
-            if self.writer != None:
-                self.writer.log({'IL/epoch_v_loss': average_epoch_loss}, step=epoch)
+            self.writer.log({'IL/epoch_v_loss': average_epoch_loss}, step=epoch)
             logging.info('Average loss in epoch %d: %.2E', epoch, average_epoch_loss)
 
         return average_epoch_loss
@@ -250,8 +247,7 @@ class VNRLTrainer(object):
 
         average_loss = losses / num_batches
         logging.info('Average loss : %.2E', average_loss)
-        if self.writer != None:
-            self.writer.log({'RL/average_v_loss': average_loss}, step=episode)
+        self.writer.log({'RL/average_v_loss': average_loss}, step=episode)
 
         return average_loss
 
@@ -282,8 +278,7 @@ class GRAPHTrainer(VNRLTrainer):
                 epoch_loss += loss.data.item()
             logging.debug('{}-th epoch ends'.format(epoch))
             average_epoch_loss = epoch_loss / len(self.memory)
-            if self.writer != None:
-                self.writer.log({'IL/epoch_v_loss': average_epoch_loss}, step=epoch)
+            self.writer.log({'IL/epoch_v_loss': average_epoch_loss}, step=epoch)
             logging.info('Average loss in epoch %d: %.2E', epoch, average_epoch_loss)
 
         return average_epoch_loss
@@ -315,8 +310,7 @@ class GRAPHTrainer(VNRLTrainer):
 
         average_loss = losses / num_batches
         logging.info('Average loss : %.2E', average_loss)
-        if self.writer != None:
-            self.writer.log({'RL/average_v_loss': average_loss}, step=episode)
+        self.writer.log({'RL/average_v_loss': average_loss}, step=episode)
 
         return average_loss
 
@@ -346,8 +340,7 @@ class TGRLTrainer(GRAPHTrainer):
                 epoch_loss += loss.data.item()
             logging.debug('{}-th epoch ends'.format(epoch))
             average_epoch_loss = epoch_loss / len(self.memory)
-            if self.writer != None:
-                self.writer.log({'IL/epoch_v_loss': average_epoch_loss}, step=epoch)
+            self.writer.log({'IL/epoch_v_loss': average_epoch_loss}, step=epoch)
             logging.info('Average loss in epoch %d: %.2E', epoch, average_epoch_loss)
 
         return average_epoch_loss
@@ -379,8 +372,7 @@ class TGRLTrainer(GRAPHTrainer):
 
         average_loss = losses / num_batches
         logging.info('Average loss : %.2E', average_loss)
-        if self.writer != None:
-            self.writer.log({'RL/average_v_loss': average_loss}, step=episode)
+        self.writer.log({'RL/average_v_loss': average_loss}, step=episode)
 
         return average_loss
 
