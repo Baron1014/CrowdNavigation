@@ -17,16 +17,16 @@ class PolicyConfig(BasePolicyConfig):
         self.gcn.similarity_function = 'embedded_gaussian'
         self.gcn.layerwise_graph = False
         self.gcn.skip_connection = True
-        self.gcn.nodes = [*range(5+1)]
 
         self.model_predictive_rl = Config()
         self.model_predictive_rl.linear_state_predictor = False
         self.model_predictive_rl.planning_depth = 1
         self.model_predictive_rl.planning_width = 1
         self.model_predictive_rl.do_action_clip = False
-        self.model_predictive_rl.motion_predictor_dims = [64, 5]
+        self.model_predictive_rl.motion_predictor_dims = [64, 7]
         self.model_predictive_rl.value_network_dims = [32, 100, 100, 1]
         self.model_predictive_rl.share_graph_model = False
+        self.model_predictive_rl.with_lstm = True
 
 
 class TrainConfig(BaseTrainConfig):

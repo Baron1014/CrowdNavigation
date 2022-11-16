@@ -64,10 +64,7 @@ def main(args):
     if policy.trainable:
         if args.model_dir is None:
             parser.error('Trainable policy must be specified with a model weights directory')
-        if args.gpu:
-            policy.load_model(model_weights)
-        else:
-            policy.load_model(model_weights, cpu=True)
+        policy.load_model(model_weights)
 
     # configure environment
     env_config = config.EnvConfig(args.debug)
