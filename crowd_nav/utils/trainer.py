@@ -31,7 +31,6 @@ class MPRLTrainer(object):
         self.share_graph_model = share_graph_model
         self.v_optimizer = None
         self.s_optimizer = None
-        self.graph_edge = policy.get_edge()
 
         # for value update
         self.gamma = 0.9
