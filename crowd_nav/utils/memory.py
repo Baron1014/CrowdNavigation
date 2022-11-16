@@ -1,4 +1,10 @@
+import torch
+import numpy as np
+import math
+import networkx as nx
+from tqdm import tqdm
 from torch.utils.data import Dataset
+from collections import deque
 
 
 class ReplayMemory(Dataset):
@@ -7,7 +13,7 @@ class ReplayMemory(Dataset):
         self.memory = list()
         self.position = 0
 
-    def push(self, item):
+    def push(self, item, graph=False):
         # replace old experience with new experience
         if len(self.memory) < self.position + 1:
             self.memory.append(item)

@@ -35,7 +35,7 @@ class BaseEnvConfig(object):
     sim.square_width = 20
     sim.circle_radius = 4
     sim.human_num = 5
-    sim.nonstop_human = False
+    sim.nonstop_human = True
     sim.centralized_planning = True
 
     humans = Config()
@@ -49,6 +49,7 @@ class BaseEnvConfig(object):
     robot.visible = False
     robot.policy = 'none'
     robot.radius = 0.3
+    robot.obs_len = 4
     if robot.radius is None:
         robot.width = 0.5
         robot.length = 0.8
@@ -57,6 +58,7 @@ class BaseEnvConfig(object):
         robot.length = None
     robot.v_pref = 1
     robot.sensor = 'coordinates'
+    robot.FOV = 0.7
 
     def __init__(self, debug=False):
         if debug:

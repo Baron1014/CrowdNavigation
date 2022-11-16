@@ -31,6 +31,7 @@ class MPRLTrainer(object):
         self.share_graph_model = share_graph_model
         self.v_optimizer = None
         self.s_optimizer = None
+        self.graph_edge = policy.get_edge()
 
         # for value update
         self.gamma = 0.9
@@ -163,6 +164,7 @@ class MPRLTrainer(object):
         return average_v_loss, average_s_loss
 
 
+
 class VNRLTrainer(object):
     def __init__(self, model, memory, device, policy, batch_size, optimizer_str, writer):
         """
@@ -219,7 +221,7 @@ class VNRLTrainer(object):
             logging.debug('{}-th epoch ends'.format(epoch))
             average_epoch_loss = epoch_loss / len(self.memory)
             if self.writer != None:
-                self.writer.log({'IL/average_epoch_loss': average_epoch_loss}, step=epoch)
+                self.writer.log({'IL/epoch_v_loss': average_epoch_loss}, step=epoch)
             logging.info('Average loss in epoch %d: %.2E', epoch, average_epoch_loss)
 
         return average_epoch_loss
@@ -249,9 +251,139 @@ class VNRLTrainer(object):
 
         average_loss = losses / num_batches
         logging.info('Average loss : %.2E', average_loss)
+        if self.writer != None:
+            self.writer.log({'RL/average_v_loss': average_loss}, step=episode)
 
         return average_loss
 
+class GRAPHTrainer(VNRLTrainer):
+    def __init__(self, model, memory, device, policy, batch_size, optimizer_str, writer):
+        super().__init__(model, memory, device, policy, batch_size, optimizer_str, writer)
+
+
+    def optimize_epoch(self, num_epochs):
+        if self.optimizer is None:
+            raise ValueError('Learning rate is not set!')
+        if self.data_loader is None:
+            self.data_loader = DataLoader(self.memory, self.batch_size, collate_fn=lambda x:graph_batch(x, device=self.device))
+            # self.data_loader = TemporalDataLoader(self.memory.get_graph_memory(), self.batch_size)
+        
+        average_epoch_loss = 0
+        for epoch in range(num_epochs):
+            epoch_loss = 0
+            logging.debug('{}-th epoch starts'.format(epoch))
+            for data in self.data_loader:
+                inputs, values, _, _ = data
+                self.optimizer.zero_grad()
+                outputs = self.model(inputs)
+                values = values.to(self.device)
+                loss = self.criterion(outputs, values)
+                loss.backward()
+                self.optimizer.step()
+                epoch_loss += loss.data.item()
+            logging.debug('{}-th epoch ends'.format(epoch))
+            average_epoch_loss = epoch_loss / len(self.memory)
+            if self.writer != None:
+                self.writer.log({'IL/epoch_v_loss': average_epoch_loss}, step=epoch)
+            logging.info('Average loss in epoch %d: %.2E', epoch, average_epoch_loss)
+
+        return average_epoch_loss
+
+    def optimize_batch(self, num_batches, episode=None):
+        if self.optimizer is None:
+            raise ValueError('Learning rate is not set!')
+        if self.data_loader is None:
+            # self.data_loader = DataLoader(self.memory, self.batch_size, shuffle=True, collate_fn=pad_batch)
+            self.data_loader = DataLoader(self.memory, self.batch_size, collate_fn=lambda x:graph_batch(x, device=self.device))
+
+        losses = 0
+        batch_count = 0
+        for data in self.data_loader:
+            _input, _, rewards, next_states = data
+            self.optimizer.zero_grad()
+            outputs = self.model(_input)
+
+            gamma_bar = pow(self.gamma, self.time_step * self.v_pref)
+            target_values = rewards + gamma_bar * self.target_model(next_states)
+
+            loss = self.criterion(outputs, target_values)
+            loss.backward()
+            self.optimizer.step()
+            losses += loss.data.item()
+            batch_count += 1
+            if batch_count > num_batches:
+                break
+
+        average_loss = losses / num_batches
+        logging.info('Average loss : %.2E', average_loss)
+        if self.writer != None:
+            self.writer.log({'RL/average_v_loss': average_loss}, step=episode)
+
+        return average_loss
+
+class TGRLTrainer(GRAPHTrainer):
+    def __init__(self, model, memory, device, policy, batch_size, optimizer_str, writer):
+        super().__init__(model, memory, device, policy, batch_size, optimizer_str, writer)
+    
+    def optimize_epoch(self, num_epochs):
+        if self.optimizer is None:
+            raise ValueError('Learning rate is not set!')
+        if self.data_loader is None:
+            self.data_loader = DataLoader(self.memory, self.batch_size, shuffle=True)
+            # self.data_loader = TemporalDataLoader(self.memory.get_graph_memory(), self.batch_size)
+        
+        average_epoch_loss = 0
+        for epoch in range(num_epochs):
+            epoch_loss = 0
+            logging.debug('{}-th epoch starts'.format(epoch))
+            for data in self.data_loader:
+                r_graph, hs_graph, adj_matrix, values, _, _, _, _ = data
+                self.optimizer.zero_grad()
+                outputs = self.model(r_graph, hs_graph, adj_matrix.squeeze())
+                values = values.to(self.device)
+                loss = self.criterion(outputs, values)
+                loss.backward()
+                self.optimizer.step()
+                epoch_loss += loss.data.item()
+            logging.debug('{}-th epoch ends'.format(epoch))
+            average_epoch_loss = epoch_loss / len(self.memory)
+            if self.writer != None:
+                self.writer.log({'IL/epoch_v_loss': average_epoch_loss}, step=epoch)
+            logging.info('Average loss in epoch %d: %.2E', epoch, average_epoch_loss)
+
+        return average_epoch_loss
+
+    def optimize_batch(self, num_batches, episode=None):
+        if self.optimizer is None:
+            raise ValueError('Learning rate is not set!')
+        if self.data_loader is None:
+            # self.data_loader = DataLoader(self.memory, self.batch_size, shuffle=True, collate_fn=pad_batch)
+            self.data_loader = DataLoader(self.memory, self.batch_size, shuffle=True)
+
+        losses = 0
+        batch_count = 0
+        for data in self.data_loader:
+            r_graph, hs_graph, adj_matrix, _, rewards, next_r_graph, next_hs_graph, next_adj_matrix = data
+            self.optimizer.zero_grad()
+            outputs = self.model(r_graph, hs_graph, adj_matrix.squeeze()).unsqueeze(0)
+
+            gamma_bar = pow(self.gamma, self.time_step * self.v_pref)
+            target_values = rewards + gamma_bar * self.target_model(next_r_graph, next_hs_graph, next_adj_matrix.squeeze())
+
+            loss = self.criterion(outputs, target_values)
+            loss.backward()
+            self.optimizer.step()
+            losses += loss.data.item()
+            batch_count += 1
+            if batch_count > num_batches:
+                break
+
+        average_loss = losses / num_batches
+        logging.info('Average loss : %.2E', average_loss)
+        if self.writer != None:
+            self.writer.log({'RL/average_v_loss': average_loss}, step=episode)
+
+        return average_loss
 
 def pad_batch(batch):
     """
@@ -273,3 +405,13 @@ def pad_batch(batch):
     next_states = sort_states(3)
 
     return states, values, rewards, next_states
+
+def graph_batch(batch, device):
+    values, rewards, graphs, next_graph = [], [], [], []
+    for data in batch:
+        graphs.append(data[0].to(device))
+        values.append(data[1])
+        rewards.append(data[2])
+        next_graph.append(data[3].to(device))
+    
+    return graphs, torch.stack(values), torch.stack(rewards), next_graph

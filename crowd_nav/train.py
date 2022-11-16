@@ -10,7 +10,7 @@ import wandb
 from configs import logger
 from configs import config as global_config
 from crowd_sim.envs.utils.robot import Robot
-from crowd_nav.utils.trainer import MPRLTrainer, VNRLTrainer
+from crowd_nav.utils.trainer import MPRLTrainer, VNRLTrainer, GRAPHTrainer, TGRLTrainer
 from crowd_nav.utils.memory import ReplayMemory
 from crowd_nav.utils.explorer import Explorer
 from crowd_nav.policy.policy_factory import policy_factory
@@ -31,7 +31,7 @@ def main(args):
     writer = None
     train_cg = global_config.BaseTrainConfig()
     if args.wandb:
-        wandb.init(project=train_cg.wan.project, entity=train_cg.wan.entity, config=args)
+        wandb.init(project=train_cg.wan.project, entity=train_cg.wan.entity, config=args, name=args.wandb_display_name)
         writer = wandb
 
     make_new_dir = True
@@ -46,6 +46,9 @@ def main(args):
                 make_new_dir = False
     if make_new_dir:
         pocliy_config = {
+            'social_stgcnn': 'configs/social_stgcnn.py',
+            'dgcnrl': 'configs/dgcnrl.py',
+            'sstgcn': 'configs/sstgcn.py',
             'rgl': 'configs/rgl.py',
             'sarl': 'configs/sarl.py', 
             'cadrl': 'configs/cadrl.py',
@@ -113,6 +116,10 @@ def main(args):
                               freeze_state_predictor=train_config.train.freeze_state_predictor,
                               detach_state_predictor=train_config.train.detach_state_predictor,
                               share_graph_model=policy_config.model_predictive_rl.share_graph_model)
+    elif policy_config.name == 'dgcnrl':
+        trainer = GRAPHTrainer(model, memory, device, policy, batch_size, optimizer, writer)
+    elif policy_config.name == 'social_stgcnn':
+        trainer = TGRLTrainer(model, memory, device, policy, batch_size, optimizer, writer)
     else:
         trainer = VNRLTrainer(model, memory, device, policy, batch_size, optimizer, writer)
     explorer = Explorer(env, robot, device, writer, memory, policy.gamma, target_policy=policy)
@@ -169,7 +176,7 @@ def main(args):
         logging.info('Evaluate the model instantly after imitation learning on the validation cases')
         explorer.run_k_episodes(env.case_size['val'], 'val', episode=episode)
         if writer!=None:
-            explorer.log('val', episode // evaluation_interval)
+            explorer.log('val', episode)
 
     episode = 0
     while episode < train_episodes:
@@ -196,7 +203,7 @@ def main(args):
         if episode % evaluation_interval == 0:
             _, _, _, reward, _ = explorer.run_k_episodes(env.case_size['val'], 'val', episode=episode)
             if writer!=None:
-                explorer.log('val', episode // evaluation_interval)
+                explorer.log('val', episode)
 
             if episode % checkpoint_interval == 0 and reward > best_val_reward:
                 best_val_reward = reward
@@ -229,7 +236,8 @@ if __name__ == '__main__':
     parser.add_argument('--debug', default=False, action='store_true')
     parser.add_argument('--randomseed', type=int, default=17)
     parser.add_argument('--wandb', default=False, action='store_true')
-    parser.add_argument('--policy', type=str, default='lstm_rl')
+    parser.add_argument('--wandb_display_name', '-wdn', type=str, default=None)
+    parser.add_argument('--policy', type=str, default='social_stgcnn')
 
     sys_args = parser.parse_args()
 
