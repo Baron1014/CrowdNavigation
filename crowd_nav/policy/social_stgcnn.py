@@ -339,9 +339,9 @@ class SSTGCNN_RL(DGCNRL):
                     curr_ped_seq[:, 1:] - curr_ped_seq[:, :-1]
                 curr_seq_rel[i, :, :] = rel_curr_ped_seq
 
-                #Convert to Graphs
-                a_ = self.seq_to_attrgraph(curr_seq_rel,self.norm_lap_matr).to(self.device)
-                vh_ = self.seq_to_nodes(human_seq_feature).to(self.device)
+            #Convert to Graphs
+            a_ = self.seq_to_attrgraph(curr_seq_rel,self.norm_lap_matr).to(self.device)
+            vh_ = self.seq_to_nodes(human_seq_feature).to(self.device)
         else:
             a_ = torch.tensor([]).to(self.device)
             vh_ = torch.tensor([]).to(self.device)
