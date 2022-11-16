@@ -21,12 +21,6 @@ class Discomfort(object):
     def __str__(self):
         return 'Discomfort'
 
-class Interrupt(object):
-    def __init__(self):
-        pass
-
-    def __str__(self):
-        return 'Interrupt'
 
 class Collision(object):
     def __init__(self):
