@@ -1,5 +1,5 @@
 from crowd_sim.envs.utils.agent import Agent
-from crowd_sim.envs.utils.state import JointState
+from crowd_sim.envs.utils.state import JointState, ObservableState
 
 class Human(Agent):
     def __init__(self, _id, config, section, static=False):
@@ -15,3 +15,6 @@ class Human(Agent):
         state = JointState(self.get_full_state(), ob)
         action = self.policy.predict(state)
         return action
+
+    def get_id_observable_state(self):
+        return ObservableState(self.px, self.py, self.vx, self.vy, self.radius, self.id)
