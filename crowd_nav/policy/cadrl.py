@@ -122,18 +122,16 @@ class CADRL(Policy):
             if self.kinematics == 'holonomic':
                 next_px = state.px + action.vx * self.time_step
                 next_py = state.py + action.vy * self.time_step
-                next_state = FullState(next_px, next_py, action.vx, action.vy,
-                                    state.gx, state.gy, state.v_pref, state.theta, state.radius)
-                # next_state = RobotState(next_px, next_py, action.vx, action.vy,
-                #                        state.gx, state.gy, state.v_pref, state.theta, robot_size=(state.length, state.width))
+                next_state = FullState(next_px, next_py, action.vx, action.vy, state.radius,
+                                       state.gx, state.gy, state.v_pref, state.theta)
             else:
                 next_theta = state.theta + action.r
                 next_vx = action.v * np.cos(next_theta)
                 next_vy = action.v * np.sin(next_theta)
                 next_px = state.px + next_vx * self.time_step
                 next_py = state.py + next_vy * self.time_step
-                # next_state = RobotState(next_px, next_py, next_vx, next_vy, state.gx, state.gy,
-                #                        state.v_pref, next_theta, robot_size=(state.length, state.width))
+                next_state = FullState(next_px, next_py, next_vx, next_vy, state.radius, state.gx, state.gy,
+                                       state.v_pref, next_theta)
         else:
             raise ValueError('Type error')
 
@@ -155,10 +153,10 @@ class CADRL(Policy):
         if self.reach_destination(state):
             return ActionXY(0, 0) if self.kinematics == 'holonomic' else ActionRot(0, 0)
         if self.action_space is None:
-            self.build_action_space(state.robot_state.v_pref)
+            self.build_action_space(state.self_state.v_pref)
         if not state.human_states:
             assert self.phase != 'train'
-            return self.select_greedy_action(state.robot_state)
+            return self.select_greedy_action(state.self_state)
 
         probability = np.random.random()
         if self.phase == 'train' and probability < self.epsilon:
@@ -168,7 +166,7 @@ class CADRL(Policy):
             max_min_value = float('-inf')
             max_action = None
             for action in self.action_space:
-                next_self_state = self.propagate(state.robot_state, action)
+                next_self_state = self.propagate(state.self_state, action)
                 if self.query_env:
                     next_human_states, reward, done, info = self.env.onestep_lookahead(action)
                 else:
@@ -181,7 +179,7 @@ class CADRL(Policy):
                 # VALUE UPDATE
                 outputs = self.model(self.rotate(batch_next_states))
                 min_output, min_index = torch.min(outputs, 0)
-                min_value = reward + pow(self.gamma, self.time_step * state.robot_state.v_pref) * min_output.data.item()
+                min_value = reward + pow(self.gamma, self.time_step * state.self_state.v_pref) * min_output.data.item()
                 self.action_values.append(min_value)
                 if min_value > max_min_value:
                     max_min_value = min_value
@@ -236,7 +234,7 @@ class CADRL(Policy):
         :param state:
         :return: tensor of shape (len(state), )
         """
-        state = torch.Tensor([state.robot_state + state.human_states[0]]).to(self.device)
+        state = torch.Tensor([state.self_state + state.human_states[0]]).to(self.device)
         state = self.rotate(state)
         return state
 
@@ -244,26 +242,23 @@ class CADRL(Policy):
         """
         Transform the coordinate to agent-centric.
         Input state tensor is of size (batch_size, state_length)
-        # 'px', 'py', 'vx', 'vy', 'gx', 'gy', 'v_pref', 'theta', 'robot_length', 'robot_width', 'px1', 'py1', 'vx1', 'vy1', 'radius1'
-        #  0     1      2     3     4     5     6          7           8               9          10      11     12    13      14
-        """    
-        # 'px', 'py', 'vx', 'vy', 'gx', 'gy', 'v_pref', 'theta', 'robot_radius', 'px1', 'py1', 'vx1', 'vy1', 'radius1'
-        #  0     1      2     3     4     5     6          7           8           9      10     11     12      13    
+
+        """
+        # 'px', 'py', 'vx', 'vy', 'radius', 'gx', 'gy', 'v_pref', 'theta', 'px1', 'py1', 'vx1', 'vy1', 'radius1'
+        #  0     1      2     3      4        5     6      7         8       9     10      11     12       13
         batch = state.shape[0]
-        dx = (state[:, 4] - state[:, 0]).reshape((batch, -1))
-        dy = (state[:, 5] - state[:, 1]).reshape((batch, -1))
-        rot = torch.atan2(state[:, 5] - state[:, 1], state[:, 4] - state[:, 0])
+        dx = (state[:, 5] - state[:, 0]).reshape((batch, -1))
+        dy = (state[:, 6] - state[:, 1]).reshape((batch, -1))
+        rot = torch.atan2(state[:, 6] - state[:, 1], state[:, 5] - state[:, 0])
 
         dg = torch.norm(torch.cat([dx, dy], dim=1), 2, dim=1, keepdim=True)
-        v_pref = state[:, 6].reshape((batch, -1))
+        v_pref = state[:, 7].reshape((batch, -1))
         vx = (state[:, 2] * torch.cos(rot) + state[:, 3] * torch.sin(rot)).reshape((batch, -1))
         vy = (state[:, 3] * torch.cos(rot) - state[:, 2] * torch.sin(rot)).reshape((batch, -1))
 
-        # length = state[:, 8].reshape((batch, -1))
-        # width = state[:, 9].reshape((batch, -1))
-        radius = state[:, 8].reshape((batch, -1))
+        radius = state[:, 4].reshape((batch, -1))
         if self.kinematics == 'unicycle':
-            theta = (state[:, 7] - rot).reshape((batch, -1))
+            theta = (state[:, 8] - rot).reshape((batch, -1))
         else:
             theta = torch.zeros_like(v_pref)
 

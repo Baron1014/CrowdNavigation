@@ -17,18 +17,15 @@ class StatePredictor(nn.Module):
         self.human_motion_predictor = mlp(config.gcn.X_dim, config.model_predictive_rl.motion_predictor_dims)
         self.time_step = time_step
 
-    def forward(self, state, action, detach=False, edge_index=None):
+    def forward(self, state, action, detach=False):
         """ Predict the next state tensor given current state as input.
 
         :return: tensor of shape (batch_size, # of agents, feature_size)
         """
         assert len(state[0].shape) == 3
         assert len(state[1].shape) == 3
-        # torch geometric
-        if edge_index is not None:
-            state_embedding = self.graph_model(state, edge_index)
-        else:
-            state_embedding = self.graph_model(state)
+
+        state_embedding = self.graph_model(state)
         if detach:
             state_embedding = state_embedding.detach()
         if action is None:
@@ -54,11 +51,11 @@ class StatePredictor(nn.Module):
             next_state[2] = action.vx
             next_state[3] = action.vy
         else:
-            next_state[6] = next_state[6] + action.r
-            next_state[0] = next_state[0] + np.cos(next_state[6].cpu()) * action.v * self.time_step
-            next_state[1] = next_state[1] + np.sin(next_state[6].cpu()) * action.v * self.time_step
-            next_state[2] = np.cos(next_state[6].cpu()) * action.v
-            next_state[3] = np.sin(next_state[6].cpu()) * action.v
+            next_state[7] = next_state[7] + action.r
+            next_state[0] = next_state[0] + np.cos(next_state[7]) * action.v * self.time_step
+            next_state[1] = next_state[1] + np.sin(next_state[7]) * action.v * self.time_step
+            next_state[2] = np.cos(next_state[7]) * action.v
+            next_state[3] = np.sin(next_state[7]) * action.v
 
         return next_state.unsqueeze(0).unsqueeze(0)
 

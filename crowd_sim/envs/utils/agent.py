@@ -86,15 +86,7 @@ class Agent(object):
         return ObservableState(next_px, next_py, next_vx, next_vy, self.radius)
 
     def get_full_state(self):
-        return FullState(self.px, self.py, self.vx, self.vy, self.gx, self.gy, self.v_pref, self.theta, self.size[0])
-        # return RobotState(self.px, self.py, self.vx, self.vy, self.gx, self.gy, self.v_pref, self.theta, robot_size=self.size)
-    
-    def get_full_state_list(self):
-        return [self.px, self.py, self.vx, self.vy, self.radius, self.gx, self.gy, self.v_pref, self.theta]
-
-    def get_full_state_list_noV(self):
-        return [self.px, self.py, self.radius, self.gx, self.gy, self.v_pref, self.theta]
-        # return [self.px, self.py, self.radius, self.gx, self.gy, self.v_pref]
+        return FullState(self.px, self.py, self.vx, self.vy, self.radius, self.gx, self.gy, self.v_pref, self.theta)
 
     def get_position(self):
         return self.px, self.py
