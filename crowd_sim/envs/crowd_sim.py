@@ -247,6 +247,8 @@ class CrowdSim(gym.Env):
 
         base_seed = {'train': self.case_capacity['val'] + self.case_capacity['test'],
                      'val': 0, 'test': self.case_capacity['val']}
+        # clean robot temporal memory
+        self.robot.clean_ego_memory()
 
         # (px, py, gx, gy, vx, vy, theta)
         # self.robot.set(0, -self.circle_radius, 0, self.circle_radius, 0, 0, 0)

@@ -82,6 +82,7 @@ def main(args):
         env.test_scenario = args.test_scenario
 
     robot = Robot(env_config, 'robot')
+    robot.set_fov(args.robot_fov)
     env.set_robot(robot)
     robot.time_step = env.time_step
     robot.set_policy(policy)
@@ -130,7 +131,7 @@ def main(args):
                 else:
                     args.video_file = os.path.join(args.video_dir, policy_config.name)
                 args.video_file = args.video_file + '_' + args.phase + '_' + str(args.test_case) + '.gif'
-            env.render('video', args.video_file, info[0])
+            env.render('video', args.video_file, info)
         logging.info('It takes %.2f seconds to finish. Final status is %s, cumulative_reward is %f', env.global_time, info, cumulative_reward)
         if robot.visible and info == 'reach goal':
             human_times = env.get_human_times()
@@ -170,6 +171,7 @@ if __name__ == '__main__':
     parser.add_argument('-d', '--planning_depth', type=int, default=None)
     parser.add_argument('-w', '--planning_width', type=int, default=None)
     parser.add_argument('--sparse_search', default=False, action='store_true')
+    parser.add_argument('-fov', '--robot_fov', type=int, default=None)
 
     sys_args = parser.parse_args()
 

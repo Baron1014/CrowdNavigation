@@ -157,6 +157,7 @@ class Explorer(object):
             raise ValueError('Memory or gamma value is not set!')
         
         graphs, adj_matrixs = [], []
+        self.robot.clean_ego_memory()
         for i, state in enumerate(states):
             # VALUE UPDATE
             if imitation_learning:
@@ -170,7 +171,9 @@ class Explorer(object):
                 graphs.append(graph)
                 adj_matrixs.append(adj)
 
-        for i, graph in enumerate(graphs[:-1]):
+        for i in range(self.robot.obs_len-1, len(states[:-1])):
+            g_idx = i-(self.robot.obs_len-1)
+            graph = graphs[g_idx]
             reward = rewards[i]
             if imitation_learning:
                 value = sum([pow(self.gamma, (t - i) * self.robot.time_step * self.robot.v_pref) * reward *
@@ -184,7 +187,7 @@ class Explorer(object):
             value = torch.Tensor([value]).to(self.device)
             reward = torch.Tensor([rewards[i]]).to(self.device)
 
-            self.memory.push((graph[0], graph[1], adj_matrixs[i], value, reward, graphs[i+1][0], graphs[i+1][1], adj_matrixs[i+1]))
+            self.memory.push((graph[0], graph[1], adj_matrixs[g_idx], value, reward, graphs[g_idx+1][0], graphs[g_idx+1][1], adj_matrixs[g_idx+1]))
     
 
 
