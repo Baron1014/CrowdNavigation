@@ -78,8 +78,6 @@ def main(args):
         env.test_scenario = 'square_crossing'
     if args.circle:
         env.test_scenario = 'circle_crossing'
-    if args.social:
-        env.test_scenario = 'social_aware'
     if args.test_scenario is not None:
         env.test_scenario = args.test_scenario
 

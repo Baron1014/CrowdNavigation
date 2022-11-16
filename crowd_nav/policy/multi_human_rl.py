@@ -5,7 +5,6 @@ from crowd_sim.envs.utils.action import ActionRot, ActionXY
 from crowd_nav.policy.cadrl import CADRL
 
 
-
 class MultiHumanRL(CADRL):
     def __init__(self):
         super().__init__()
@@ -71,6 +70,31 @@ class MultiHumanRL(CADRL):
 
         return max_action
 
+    def compute_reward(self, nav, humans):
+        # collision detection
+        dmin = float('inf')
+        collision = False
+        for i, human in enumerate(humans):
+            dist = np.linalg.norm((nav.px - human.px, nav.py - human.py)) - nav.radius - human.radius
+            if dist < 0:
+                collision = True
+                break
+            if dist < dmin:
+                dmin = dist
+
+        # check if reaching the goal
+        reaching_goal = np.linalg.norm((nav.px - nav.gx, nav.py - nav.gy)) < nav.radius
+        if collision:
+            reward = -0.25
+        elif reaching_goal:
+            reward = 1
+        elif dmin < 0.2:
+            reward = (dmin - 0.2) * 0.5 * self.time_step
+        else:
+            reward = 0
+
+        return reward
+
     def transform(self, state):
         """
         Take the state passed from agent and transform it to the input of value network
@@ -78,7 +102,7 @@ class MultiHumanRL(CADRL):
         :param state:
         :return: tensor of shape (# of humans, len(state))
         """
-        state_tensor = torch.cat([torch.Tensor([state.robot_state + human_state])
+        state_tensor = torch.cat([torch.Tensor([state.robot_state + human_state]).to(self.device)
                                   for human_state in state.human_states], dim=0)
         rotated_state_tensor = self.rotate(state_tensor)
         if self.with_om:

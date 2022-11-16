@@ -28,7 +28,6 @@ class Explorer(object):
         collision = 0
         timeout = 0
         discomfort = 0
-        interrupt = 0
         min_dist = []
         cumulative_rewards = []
         average_returns = []
@@ -52,12 +51,7 @@ class Explorer(object):
                 states.append(self.robot.policy.last_state)
                 actions.append(action)
                 rewards.append(reward)
-                
-                if len(info)==2:
-                    if isinstance(info[-1], Interrupt):
-                        interrupt+=1
-                
-                info=info[0]
+
                 if isinstance(info, Discomfort):
                     discomfort += 1
                     min_dist.append(info.min_dist)
@@ -110,7 +104,6 @@ class Explorer(object):
             total_time = sum(success_times + collision_times + timeout_times)
             logging.info('Frequency of being in danger: %.2f and average min separate distance in danger: %.2f',
                          discomfort / total_time, average(min_dist))
-            logging.info("Interrupt human interaction: {:.2f}".format(interrupt/total_time))
             if self.writer and phase=='test':
                 self.writer.run.summary[phase + '/success_rate'] = success_rate
                 self.writer.run.summary[phase + '/collision_rate'] = collision_rate
@@ -152,8 +145,6 @@ class Explorer(object):
                     value = 0
             value = torch.Tensor([value]).to(self.device)
             reward = torch.Tensor([rewards[i]]).to(self.device)
-            # state = state.to(self.device)
-            # next_state = next_state.to(self.device)
 
             if self.target_policy.name == 'ModelPredictiveRL' or self.target_policy.name == 'SSTGCNN_RL':
                 self.memory.push((state[0], state[1], value, reward, next_state[0], next_state[1]))

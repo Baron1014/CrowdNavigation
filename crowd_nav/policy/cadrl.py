@@ -3,7 +3,6 @@ import torch.nn as nn
 import numpy as np
 import itertools
 import logging
-from crowd_sim.envs.utils.utils import getCloestEdgeDist
 from crowd_sim.envs.policy.policy import Policy
 from crowd_sim.envs.utils.action import ActionRot, ActionXY
 from crowd_sim.envs.utils.state import ObservableState, FullState
@@ -275,37 +274,8 @@ class CADRL(Policy):
         py1 = (state[:, 10] - state[:, 1]) * torch.cos(rot) - (state[:, 9] - state[:, 0]) * torch.sin(rot)
         py1 = py1.reshape((batch, -1))
         radius1 = state[:, 13].reshape((batch, -1))
-        # radius_sum =(width+length)/2 + radius1
         radius_sum = radius + radius1
         da = torch.norm(torch.cat([(state[:, 0] - state[:, 9]).reshape((batch, -1)), (state[:, 1] - state[:, 10]).
                                   reshape((batch, -1))], dim=1), 2, dim=1, keepdim=True)
         new_state = torch.cat([dg, v_pref, theta, radius, vx, vy, px1, py1, vx1, vy1, radius1, da, radius_sum], dim=1)
         return new_state
-
-    def compute_reward(self, nav, humans):
-        # collision detection
-        dmin = float('inf')
-        collision = False
-        for i, human in enumerate(humans):
-            # dist = getCloestEdgeDist(nav.px, nav.py, human.px, human.py, nav.width/2, nav.length/2) - human.radius
-            dist = np.linalg.norm((nav.px - human.px, nav.py - human.py)) - nav.radius - human.radius
-            if dist < 0:
-                collision = True
-                break
-            if dist < dmin:
-                dmin = dist
-
-        # check if reaching the goal
-        reaching_goal = np.linalg.norm((nav.px - nav.gx, nav.py - nav.gy)) < nav.radius
-        # goal_delta_x, goal_delta_y = nav.px - nav.gx, nav.py - nav.gy
-        # reaching_goal = abs(goal_delta_x) < nav.width/2 and abs(goal_delta_y) < nav.length/2
-        if collision:
-            reward = -0.25
-        elif reaching_goal:
-            reward = 1
-        elif dmin < 0.2:
-            reward = (dmin - 0.2) * 0.5 * self.time_step
-        else:
-            reward = 0
-
-        return reward
