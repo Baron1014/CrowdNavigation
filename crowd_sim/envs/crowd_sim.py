@@ -488,8 +488,10 @@ class CrowdSim(gym.Env):
             # compute the observation
             if self.robot.sensor == 'coordinates':
                 ob = self.compute_observation_for(self.robot)
-            elif self.robot.sensor == 'RGBD':
+            elif self.robot.sensor == 'RGBD' and self.robot.policy.name=='SSTGCNN_RL':
                 ob, _ = self.compute_fov_observation_for()
+            else: # for imitation learning of target policy use fov
+                ob = self.compute_observation_for(self.robot)
         else:
             if self.robot.sensor == 'coordinates':
                 ob = [human.get_next_observable_state(action) for human, action in zip(self.humans, human_actions)]

@@ -61,6 +61,7 @@ def main(args):
         policy_config.model_predictive_rl.sparse_search = True
 
     policy.configure(policy_config)
+    policy.set_device(device)
     if policy.trainable:
         if args.model_dir is None:
             parser.error('Trainable policy must be specified with a model weights directory')
@@ -154,7 +155,7 @@ if __name__ == '__main__':
     parser.add_argument('--il', default=False, action='store_true')
     parser.add_argument('--rl', default=False, action='store_true')
     parser.add_argument('--gpu', default=False, action='store_true')
-    parser.add_argument('-v', '--visualize', default=True, action='store_true')
+    parser.add_argument('-v', '--visualize', default=False, action='store_true')
     parser.add_argument('--phase', type=str, default='test')
     parser.add_argument('-c', '--test_case', type=int, default=None)
     parser.add_argument('--square', default=False, action='store_true')
