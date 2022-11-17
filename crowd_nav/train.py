@@ -165,6 +165,7 @@ def main(args):
         il_policy = policy_factory[il_policy]()
         il_policy.multiagent_training = policy.multiagent_training
         il_policy.safety_space = safety_space
+        robot.set_fov(2) # for imitation learning of target policy use fov
         robot.set_policy(il_policy)
         explorer.run_k_episodes(il_episodes, 'train', update_memory=True, imitation_learning=True)
         explorer.log('IL', global_step=0)
@@ -178,6 +179,7 @@ def main(args):
     # reinforcement learning
     policy.set_env(env)
     robot.set_policy(policy)
+    robot.set_fov(env_config.robot.FOV)
     robot.print_info()
     trainer.set_learning_rate(rl_learning_rate)
     # fill the memory pool with some RL experience

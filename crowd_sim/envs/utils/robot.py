@@ -1,3 +1,4 @@
+import numpy as np
 from crowd_sim.envs.utils.agent import Agent
 from crowd_sim.envs.utils.state import JointState
 from collections import deque
