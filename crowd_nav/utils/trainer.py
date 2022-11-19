@@ -332,7 +332,7 @@ class TGRLTrainer(GRAPHTrainer):
             for data in self.data_loader:
                 r_graph, hs_graph, adj_matrix, values, _, _, _, _ = data
                 self.optimizer.zero_grad()
-                outputs = self.model(r_graph, hs_graph, adj_matrix.squeeze())
+                outputs = self.model(r_graph, hs_graph, adj_matrix)
                 values = values.to(self.device)
                 loss = self.criterion(outputs, values)
                 loss.backward()
@@ -357,7 +357,7 @@ class TGRLTrainer(GRAPHTrainer):
         for data in self.data_loader:
             r_graph, hs_graph, adj_matrix, _, rewards, next_r_graph, next_hs_graph, next_adj_matrix = data
             self.optimizer.zero_grad()
-            outputs = self.model(r_graph, hs_graph, adj_matrix.squeeze()).unsqueeze(0)
+            outputs = self.model(r_graph, hs_graph, adj_matrix).unsqueeze(0)
 
             gamma_bar = pow(self.gamma, self.time_step * self.v_pref)
             target_values = rewards + gamma_bar * self.target_model(next_r_graph, next_hs_graph, next_adj_matrix.squeeze())
