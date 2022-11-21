@@ -527,10 +527,11 @@ class CrowdSim(gym.Env):
 
 
     def detect_visible(self, state1, state2):
-        if self.robot.kinematics == 'holonomic':
-            real_theta = np.arctan2(state1.vy, state1.vx)
-        else:
-            real_theta = state1.theta
+        # if self.robot.kinematics == 'holonomic':
+        #     real_theta = np.arctan2(state1.vy, state1.vx)
+        # else:
+        #     real_theta = state1.theta
+        real_theta = state1.theta
         # angle of center line of FOV of agent1
         v_fov = [np.cos(real_theta), np.sin(real_theta)]
 
@@ -654,7 +655,7 @@ class CrowdSim(gym.Env):
             show_human_start_goal = False
 
             # add human start positions and goals
-            human_colors = [cmap(i) for i in range(len(self.humans))]
+            # human_colors = [cmap(i) for i in range(len(self.humans))]
             if show_human_start_goal:
                 for i in range(len(self.humans)):
                     human = self.humans[i]
@@ -670,7 +671,6 @@ class CrowdSim(gym.Env):
             robot_start = mlines.Line2D([self.robot.get_start_position()[0]], [self.robot.get_start_position()[1]],
                                         color=robot_color,
                                         marker='o', linestyle='None', markersize=8)
-            robot_start_position = [self.robot.get_start_position()[0], self.robot.get_start_position()[1]]
             ax.add_artist(robot_start)
             # add robot and its goal
             robot_positions = [state[0].position for state in self.states]
@@ -692,8 +692,19 @@ class CrowdSim(gym.Env):
             if display_numbers:
                 human_numbers = [plt.text(humans[i].center[0] - x_offset, humans[i].center[1] + y_offset, str(i),
                                           color='black') for i in range(len(self.humans))]
+            # disable showing FoV
+            if self.robot.FoV < np.pi * 2:
+                human_colors = []
+                for state in self.states:
+                    colors = []
+                    for h in range(len(humans)):
+                        # green: visible; red: invisible
+                        colors.append('g' if self.detect_visible(state[0], state[1][h]) else 'r')
+                    human_colors.append(colors)
 
             for i, human in enumerate(humans):
+                if self.robot.FoV < np.pi * 2:
+                    human.set_color(c=human_colors[0][i])
                 ax.add_artist(human)
                 if display_numbers:
                     ax.add_artist(human_numbers[i])
@@ -730,41 +741,94 @@ class CrowdSim(gym.Env):
                     arrows = [patches.FancyArrowPatch(*orientation[0], color=arrow_color, arrowstyle=arrow_style)]
                 else:
                     arrows.extend(
-                        [patches.FancyArrowPatch(*orientation[0], color=human_colors[i - 1], arrowstyle=arrow_style)])
+                        [patches.FancyArrowPatch(*orientation[0], color=human_colors[0][i - 1], arrowstyle=arrow_style)])
 
             for arrow in arrows:
                 ax.add_artist(arrow)
             global_step = 0
 
-            if len(self.trajs) != 0:
-                human_future_positions = []
-                human_future_circles = []
-                for traj in self.trajs:
-                    human_future_position = [[tensor_to_joint_state(traj[step+1][0]).human_states[i].position
-                                              for step in range(self.robot.policy.planning_depth)]
-                                             for i in range(self.human_num)]
-                    human_future_positions.append(human_future_position)
+            def calcFOVLineEndPoint(ang, point, extendFactor):
+                # choose the extendFactor big enough
+                # so that the endPoints of the FOVLine is out of xlim and ylim of the figure
+                FOVLineRot = np.array([[np.cos(ang), -np.sin(ang), 0],
+                                    [np.sin(ang), np.cos(ang), 0],
+                                    [0, 0, 1]])
+                point.extend([1])
+                # apply rotation matrix
+                newPoint = np.matmul(FOVLineRot, np.reshape(point, [3, 1]))
+                # increase the distance between the line start point and the end point
+                newPoint = [extendFactor * newPoint[0, 0], extendFactor * newPoint[1, 0], 1]
+                return newPoint
+            
+            def draw_fov(frame):            
+                # draw FOV for the robot
+                # add robot FOV
+                artists = []
+                if self.robot.FoV < np.pi * 2:
+                    FOVAng = self.robot.FoV / 2
+                    FOVLine1 = mlines.Line2D([0, 0], [0, 0], linestyle='--')
+                    FOVLine2 = mlines.Line2D([0, 0], [0, 0], linestyle='--')
 
-                for i in range(self.human_num):
-                    circles = []
-                    for j in range(self.robot.policy.planning_depth):
-                        circle = plt.Circle(human_future_positions[0][i][j], self.humans[0].radius/(1.7+j), fill=False, color=cmap(i))
-                        ax.add_artist(circle)
-                        circles.append(circle)
-                    human_future_circles.append(circles)
+
+                    startPointX, startPointY = robot_positions[frame]
+                    endPointX = startPointX + radius* np.cos(self.robot.theta)
+                    endPointY = startPointY + radius* np.sin(self.robot.theta)
+
+                    # transform the vector back to world frame origin, apply rotation matrix, and get end point of FOVLine
+                    # the start point of the FOVLine is the center of the robot
+                    FOVEndPoint1 = calcFOVLineEndPoint(FOVAng, [endPointX - startPointX, endPointY - startPointY], 20. / self.robot.radius)
+                    FOVLine1.set_xdata(np.array([startPointX, startPointX + FOVEndPoint1[0]]))
+                    FOVLine1.set_ydata(np.array([startPointY, startPointY + FOVEndPoint1[1]]))
+                    FOVEndPoint2 = calcFOVLineEndPoint(-FOVAng, [endPointX - startPointX, endPointY - startPointY], 20. / self.robot.radius)
+                    FOVLine2.set_xdata(np.array([startPointX, startPointX + FOVEndPoint2[0]]))
+                    FOVLine2.set_ydata(np.array([startPointY, startPointY + FOVEndPoint2[1]]))
+
+                    ax.add_artist(FOVLine1)
+                    ax.add_artist(FOVLine2)
+                    artists.append(FOVLine1)
+                    artists.append(FOVLine2)
+                return artists
+
+            artists = draw_fov(0)
+            # if len(self.trajs) != 0:
+            #     human_future_positions = []
+            #     human_future_circles = []
+            #     for traj in self.trajs:
+            #         human_future_position = [[tensor_to_joint_state(traj[step+1][0]).human_states[i].position
+            #                                   for step in range(self.robot.policy.planning_depth)]
+            #                                  for i in range(self.human_num)]
+            #         human_future_positions.append(human_future_position)
+
+            #     for i in range(self.human_num):
+            #         circles = []
+            #         for j in range(self.robot.policy.planning_depth):
+            #             circle = plt.Circle(human_future_positions[0][i][j], self.humans[0].radius/(1.7+j), fill=False, color=cmap(i))
+            #             ax.add_artist(circle)
+            #             circles.append(circle)
+            #         human_future_circles.append(circles)
+            
+
 
             def update(frame_num):
                 nonlocal global_step
                 nonlocal arrows
+                nonlocal artists
                 global_step = frame_num
                 robot.center = robot_positions[frame_num]
 
                 for i, human in enumerate(humans):
                     human.center = human_positions[frame_num][i]
+                    if self.robot.FoV < np.pi * 2:
+                        human.set_color(c=human_colors[frame_num][i])
                     if display_numbers:
                         human_numbers[i].set_position((human.center[0] - x_offset, human.center[1] + y_offset))
+
                 for arrow in arrows:
                     arrow.remove()
+                for artist in artists:
+                    artist.remove()
+
+                artists = draw_fov(frame_num)
 
                 for i in range(self.human_num + 1):
                     orientation = orientations[i]
@@ -772,7 +836,7 @@ class CrowdSim(gym.Env):
                         arrows = [patches.FancyArrowPatch(*orientation[frame_num], color='black',
                                                           arrowstyle=arrow_style)]
                     else:
-                        arrows.extend([patches.FancyArrowPatch(*orientation[frame_num], color=cmap(i - 1),
+                        arrows.extend([patches.FancyArrowPatch(*orientation[frame_num], color=human_colors[frame_num][i - 1],
                                                                arrowstyle=arrow_style)])
 
                 for arrow in arrows:
@@ -782,10 +846,10 @@ class CrowdSim(gym.Env):
 
                 time.set_text('Time: {:.2f}'.format(frame_num * self.time_step))
 
-                if len(self.trajs) != 0:
-                    for i, circles in enumerate(human_future_circles):
-                        for j, circle in enumerate(circles):
-                            circle.center = human_future_positions[global_step][i][j]
+                # if len(self.trajs) != 0:
+                #     for i, circles in enumerate(human_future_circles):
+                #         for j, circle in enumerate(circles):
+                #             circle.center = human_future_positions[global_step][i][j]
 
                 if info:
                     if len(self.states)-1 == frame_num:
