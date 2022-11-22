@@ -153,7 +153,7 @@ class CADRL(Policy):
         if self.reach_destination(state):
             return ActionXY(0, 0) if self.kinematics == 'holonomic' else ActionRot(0, 0)
         if self.action_space is None:
-            self.build_action_space(state.self_state.v_pref)
+            self.build_action_space(state.robot_state.v_pref)
         if not state.human_states:
             assert self.phase != 'train'
             return self.select_greedy_action(state.self_state)
@@ -166,7 +166,7 @@ class CADRL(Policy):
             max_min_value = float('-inf')
             max_action = None
             for action in self.action_space:
-                next_self_state = self.propagate(state.self_state, action)
+                next_self_state = self.propagate(state.robot_state, action)
                 if self.query_env:
                     next_human_states, reward, done, info = self.env.onestep_lookahead(action)
                 else:
@@ -179,7 +179,7 @@ class CADRL(Policy):
                 # VALUE UPDATE
                 outputs = self.model(self.rotate(batch_next_states))
                 min_output, min_index = torch.min(outputs, 0)
-                min_value = reward + pow(self.gamma, self.time_step * state.self_state.v_pref) * min_output.data.item()
+                min_value = reward + pow(self.gamma, self.time_step * state.robot_state.v_pref) * min_output.data.item()
                 self.action_values.append(min_value)
                 if min_value > max_min_value:
                     max_min_value = min_value
@@ -189,6 +189,32 @@ class CADRL(Policy):
             self.last_state = self.transform(state)
 
         return max_action
+    
+    def compute_reward(self, nav, humans):
+        # collision detection
+        dmin = float('inf')
+        collision = False
+        for i, human in enumerate(humans):
+            dist = np.linalg.norm((nav.px - human.px, nav.py - human.py)) - nav.radius - human.radius
+            if dist < 0:
+                collision = True
+                break
+            if dist < dmin:
+                dmin = dist
+
+        # check if reaching the goal
+        reaching_goal = np.linalg.norm((nav.px - nav.gx, nav.py - nav.gy)) < nav.radius
+        if collision:
+            reward = -0.25
+        elif reaching_goal:
+            reward = 1
+        elif dmin < 0.2:
+            reward = (dmin - 0.2) * 0.5 * self.time_step
+        else:
+            reward = 0
+
+        return reward
+
 
     def select_greedy_action(self, self_state):
         # find the greedy action given kinematic constraints and return the closest action in the action space
@@ -234,7 +260,7 @@ class CADRL(Policy):
         :param state:
         :return: tensor of shape (len(state), )
         """
-        state = torch.Tensor([state.self_state + state.human_states[0]]).to(self.device)
+        state = torch.Tensor([state.robot_state + state.human_states[0]]).to(self.device)
         state = self.rotate(state)
         return state
 

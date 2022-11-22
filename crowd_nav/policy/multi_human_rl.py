@@ -70,31 +70,6 @@ class MultiHumanRL(CADRL):
 
         return max_action
 
-    def compute_reward(self, nav, humans):
-        # collision detection
-        dmin = float('inf')
-        collision = False
-        for i, human in enumerate(humans):
-            dist = np.linalg.norm((nav.px - human.px, nav.py - human.py)) - nav.radius - human.radius
-            if dist < 0:
-                collision = True
-                break
-            if dist < dmin:
-                dmin = dist
-
-        # check if reaching the goal
-        reaching_goal = np.linalg.norm((nav.px - nav.gx, nav.py - nav.gy)) < nav.radius
-        if collision:
-            reward = -0.25
-        elif reaching_goal:
-            reward = 1
-        elif dmin < 0.2:
-            reward = (dmin - 0.2) * 0.5 * self.time_step
-        else:
-            reward = 0
-
-        return reward
-
     def transform(self, state):
         """
         Take the state passed from agent and transform it to the input of value network
