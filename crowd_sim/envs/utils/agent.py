@@ -4,7 +4,7 @@ import numpy as np
 from numpy.linalg import norm
 from crowd_sim.envs.policy.policy_factory import policy_factory
 from crowd_sim.envs.utils.action import ActionXY, ActionRot
-from crowd_sim.envs.utils.state import ObservableState, ObservableState_noV, FullState
+from crowd_sim.envs.utils.state import ObservableState, FullState
 
 
 class Agent(object):
@@ -15,10 +15,8 @@ class Agent(object):
         """
         self.visible = getattr(config, section).visible
         self.v_pref = getattr(config, section).v_pref
-        if getattr(config, section).policy == 'srnn':
-            self.policy = policy_factory[getattr(config, section).policy](config)
-        else:
-            self.policy = policy_factory[getattr(config, section).policy]()
+        self.radius = getattr(config, section).radius
+        self.policy = policy_factory[getattr(config, section).policy]()
         self.sensor = getattr(config, section).sensor
         self.kinematics = self.policy.kinematics if self.policy is not None else None
         self.px = None
@@ -32,11 +30,7 @@ class Agent(object):
         # self.policy.time_step = self.time_step
         subconfig = config.robot if section == 'robot' else config.humans
         self.radius = subconfig.radius
-        if section == 'robot':
-            self.width = config.robot.width
-            self.length = config.robot.length
-            self.FoV = np.pi * config.robot.FOV
-        self.size = [self.radius]  if self.radius is not None else [self.width, self.length]
+        self.FoV = np.pi * config.robot.FOV if section == 'robot' else None
 
     def print_info(self):
         logging.info('Agent is {} and has {} kinematic constraint'.format(
@@ -61,7 +55,7 @@ class Agent(object):
         self.v_pref = np.random.uniform(0.5, 1.5)
         self.radius = np.random.uniform(0.3, 0.5)
 
-    def set(self, px, py, gx, gy, vx, vy, theta, radius=None, v_pref=None, interaction=None):
+    def set(self, px, py, gx, gy, vx, vy, theta, radius=None, v_pref=None):
         self.px = px
         self.py = py
         self.sx = px
@@ -75,23 +69,9 @@ class Agent(object):
             self.radius = radius
         if v_pref is not None:
             self.v_pref = v_pref
-        if interaction is not None:
-            self.interaction = interaction
 
     def get_observable_state(self):
         return ObservableState(self.px, self.py, self.vx, self.vy, self.radius)
-    
-    def get_id_observable_state(self):
-        return ObservableState(self.px, self.py, self.vx, self.vy, self.radius, self.id)
-    
-    def get_observable_state_list(self):
-        return [self.px, self.py, self.vx, self.vy, self.radius]
-
-    def get_observable_state_noV(self):
-        return ObservableState_noV(self.px, self.py, self.radius)
-
-    def get_observable_state_list_noV(self):
-        return [self.px, self.py, self.radius]
 
     def get_next_observable_state(self, action):
         self.check_validity(action)
@@ -106,15 +86,7 @@ class Agent(object):
         return ObservableState(next_px, next_py, next_vx, next_vy, self.radius)
 
     def get_full_state(self):
-        return FullState(self.px, self.py, self.vx, self.vy, self.gx, self.gy, self.v_pref, self.theta, self.size[0])
-        # return RobotState(self.px, self.py, self.vx, self.vy, self.gx, self.gy, self.v_pref, self.theta, robot_size=self.size)
-    
-    def get_full_state_list(self):
-        return [self.px, self.py, self.vx, self.vy, self.radius, self.gx, self.gy, self.v_pref, self.theta]
-
-    def get_full_state_list_noV(self):
-        return [self.px, self.py, self.radius, self.gx, self.gy, self.v_pref, self.theta]
-        # return [self.px, self.py, self.radius, self.gx, self.gy, self.v_pref]
+        return FullState(self.px, self.py, self.vx, self.vy, self.radius, self.gx, self.gy, self.v_pref, self.theta)
 
     def get_position(self):
         return self.px, self.py

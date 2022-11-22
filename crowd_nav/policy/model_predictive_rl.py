@@ -6,11 +6,10 @@ import itertools
 from crowd_sim.envs.policy.policy import Policy
 from crowd_sim.envs.utils.action import ActionRot, ActionXY
 from crowd_sim.envs.utils.state import tensor_to_joint_state
-from crowd_sim.envs.utils.utils import point_to_segment_dist, point_to_clostest, getCloestEdgeDist
+from crowd_sim.envs.utils.utils import point_to_segment_dist
 from crowd_nav.policy.state_predictor import StatePredictor, LinearStatePredictor
-from crowd_nav.policy.graph_model import RGL, SSTGCN
+from crowd_nav.policy.graph_model import RGL
 from crowd_nav.policy.value_estimator import ValueEstimator
-from itertools import permutations
 
 
 class ModelPredictiveRL(Policy):
@@ -32,9 +31,6 @@ class ModelPredictiveRL(Policy):
         self.action_values = None
         self.robot_state_dim = 9
         self.human_state_dim = 5
-        # for sstgcn
-        # self.robot_state_dim = 5
-        # self.human_state_dim = 7
         self.v_pref = 1
         self.share_graph_model = None
         self.value_estimator = None
@@ -48,8 +44,6 @@ class ModelPredictiveRL(Policy):
         self.sparse_rotation_samples = 8
         self.action_group_index = []
         self.traj = None
-        self.with_lstm = None
-        self.edge_index = None
 
     def configure(self, config):
         self.set_common_parameters(config)
@@ -60,9 +54,6 @@ class ModelPredictiveRL(Policy):
         self.planning_width = config.model_predictive_rl.planning_width
         self.share_graph_model = config.model_predictive_rl.share_graph_model
         self.linear_state_predictor = config.model_predictive_rl.linear_state_predictor
-        self.nodes = config.gcn.nodes
-        if hasattr(config.model_predictive_rl, 'with_lstm'):
-            self.with_lstm = config.model_predictive_rl.with_lstm
 
         if self.linear_state_predictor:
             self.state_predictor = LinearStatePredictor(config, self.time_step)
@@ -75,13 +66,6 @@ class ModelPredictiveRL(Policy):
                 self.value_estimator = ValueEstimator(config, graph_model)
                 self.state_predictor = StatePredictor(config, graph_model, self.time_step)
                 self.model = [graph_model, self.value_estimator.value_network, self.state_predictor.human_motion_predictor]
-            elif self.with_lstm:
-                graph_model1 = SSTGCN(config, self.robot_state_dim, self.human_state_dim)
-                self.value_estimator = ValueEstimator(config, graph_model1)
-                graph_model2 = SSTGCN(config, self.robot_state_dim, self.human_state_dim)
-                self.state_predictor = StatePredictor(config, graph_model2, self.time_step)
-                self.model = [graph_model1, graph_model2, self.value_estimator.value_network,
-                              self.state_predictor.human_motion_predictor]
             else:
                 graph_model1 = RGL(config, self.robot_state_dim, self.human_state_dim)
                 self.value_estimator = ValueEstimator(config, graph_model1)
@@ -122,9 +106,6 @@ class ModelPredictiveRL(Policy):
 
     def get_model(self):
         return self.value_estimator
-
-    def get_edge(self):
-        return self.edge_index
 
     def get_state_dict(self):
         if self.state_predictor.trainable:
@@ -167,11 +148,8 @@ class ModelPredictiveRL(Policy):
     def save_model(self, file):
         torch.save(self.get_state_dict(), file)
 
-    def load_model(self, file, cpu=False):
-        if cpu:
-            checkpoint = torch.load(file, map_location=torch.device('cpu'))
-        else:
-            checkpoint = torch.load(file)
+    def load_model(self, file):
+        checkpoint = torch.load(file, map_location=self.device)
         self.load_state_dict(checkpoint)
 
     def build_action_space(self, v_pref):
@@ -242,15 +220,8 @@ class ModelPredictiveRL(Policy):
                 action_space_clipped = self.action_space
 
             for action in action_space_clipped:
-                if self.with_lstm:
-                    state_tensor = state.to_tensor(add_batch_size=False, device=self.device)
-                    state_tensor = self.rotate(state_tensor)
-                    state_tensor[0] = state_tensor[0].unsqueeze(0)
-                    state_tensor[1] = state_tensor[1].unsqueeze(0)
-                else:
-                    state_tensor = state.to_tensor(add_batch_size=True, device=self.device)
-                
-                next_state = self.state_predictor(state_tensor, action, edge_index=self.edge_index)
+                state_tensor = state.to_tensor(add_batch_size=True, device=self.device)
+                next_state = self.state_predictor(state_tensor, action)
                 max_next_return, max_next_traj = self.V_planning(next_state, self.planning_depth, self.planning_width)
                 reward_est = self.estimate_reward(state, action)
                 value = reward_est + self.get_normalized_gamma() * max_next_return
@@ -272,7 +243,7 @@ class ModelPredictiveRL(Policy):
         values = []
 
         for action in action_space:
-            next_state_est = self.state_predictor(state, action, edge_index=self.edge_index)
+            next_state_est = self.state_predictor(state, action)
             next_return, _ = self.V_planning(next_state_est, depth, width)
             reward_est = self.estimate_reward(state, action)
             value = reward_est + self.get_normalized_gamma() * next_return
@@ -303,7 +274,7 @@ class ModelPredictiveRL(Policy):
 
         """
 
-        current_state_value = self.value_estimator(state, self.edge_index)
+        current_state_value = self.value_estimator(state)
         if depth == 1:
             return current_state_value, [(state, None, None)]
 
@@ -316,7 +287,7 @@ class ModelPredictiveRL(Policy):
         trajs = []
 
         for action in action_space_clipped:
-            next_state_est = self.state_predictor(state, action, edge_index=self.edge_index)
+            next_state_est = self.state_predictor(state, action)
             reward_est = self.estimate_reward(state, action)
             next_value, next_traj = self.V_planning(next_state_est, depth - 1, self.planning_width)
             return_value = current_state_value / depth + (depth - 1) / depth * (self.get_normalized_gamma() * next_value + reward_est)
@@ -324,7 +295,7 @@ class ModelPredictiveRL(Policy):
             returns.append(return_value)
             trajs.append([(state, action, reward_est)] + next_traj)
 
-        max_index = np.argmax([i.item() for i in returns])
+        max_index = np.argmax(returns)
         max_return = returns[max_index]
         max_traj = trajs[max_index]
 
@@ -355,8 +326,6 @@ class ModelPredictiveRL(Policy):
             ey = py + vy * self.time_step
             # closest distance between boundaries of two agents
             closest_dist = point_to_segment_dist(px, py, ex, ey, 0, 0) - human.radius - robot_state.radius
-            # closest_x, closest_y = point_to_clostest(px, py, ex, ey, 0, 0)
-            # closest_dist = getCloestEdgeDist(closest_x, closest_y, 0, 0, robot_state.width/2, robot_state.length/2) - human.radius
             if closest_dist < 0:
                 collision = True
                 break
@@ -372,10 +341,8 @@ class ModelPredictiveRL(Policy):
             px = robot_state.px + np.cos(theta) * action.v * self.time_step
             py = robot_state.py + np.sin(theta) * action.v * self.time_step
 
-        # end_position = np.array((px, py))
-        # goal_delta_x, goal_delta_y = robot_state.px - robot_state.gx, robot_state.py - robot_state.gy
-        # reaching_goal = abs(goal_delta_x) < robot_state.width/2 and abs(goal_delta_y) < robot_state.length/2
-        reaching_goal = np.linalg.norm((robot_state.px - robot_state.gx, robot_state.py - robot_state.gy)) < robot_state.radius
+        end_position = np.array((px, py))
+        reaching_goal = norm(end_position - np.array([robot_state.gx, robot_state.gy])) < robot_state.radius
 
         if collision:
             reward = -0.25
@@ -399,54 +366,5 @@ class ModelPredictiveRL(Policy):
         robot_state_tensor = torch.Tensor([state.robot_state.to_tuple()]).to(self.device)
         human_states_tensor = torch.Tensor([human_state.to_tuple() for human_state in state.human_states]). \
             to(self.device)
-        if self.with_lstm:
-            robot_state_tensor, human_states_tensor = self.rotate([robot_state_tensor, human_states_tensor])
 
         return robot_state_tensor, human_states_tensor
-
-    def rotate(self, state):
-        """
-        Transform the coordinate to agent-centric.
-        Input state tensor is of size (batch_size, state_length)
-        """
-        # robot state    
-        # 'px', 'py', 'vx', 'vy', 'gx', 'gy', 'v_pref', 'theta', 'robot_radius'
-        #  0     1      2     3     4     5     6          7           8        
-        # human state 
-        # 'px', 'py', 'vx', 'vy', 'radius'
-        #  0     1      2     3     4
-        robot_state, human_state = state
-
-        batch, human_batch = robot_state.shape[0], human_state.shape[0]
-        dx = (robot_state[:, 4] - robot_state[:, 0]).reshape((batch, -1))
-        dy = (robot_state[:, 5] - robot_state[:, 1]).reshape((batch, -1))
-        rot = torch.atan2(robot_state[:, 5] - robot_state[:, 1], robot_state[:, 4] - robot_state[:, 0])
-
-        dg = torch.norm(torch.cat([dx, dy], dim=1), 2, dim=1, keepdim=True)
-        v_pref = robot_state[:, 6].reshape((batch, -1))
-        vx = (robot_state[:, 2] * torch.cos(rot) + robot_state[:, 3] * torch.sin(rot)).reshape((batch, -1))
-        vy = (robot_state[:, 3] * torch.cos(rot) - robot_state[:, 2] * torch.sin(rot)).reshape((batch, -1))
-
-        # length = state[:, 8].reshape((batch, -1))
-        # width = state[:, 9].reshape((batch, -1))
-        radius = robot_state[:, 8].reshape((batch, -1))
-        if self.kinematics == 'unicycle':
-            theta = (robot_state[:, 7] - rot).reshape((batch, -1))
-        else:
-            theta = torch.zeros_like(v_pref)
-
-        vx1 = (human_state[:, 2] * torch.cos(rot) + human_state[:, 3] * torch.sin(rot)).reshape((human_batch, -1))
-        vy1 = (human_state[:, 3] * torch.cos(rot) - human_state[:, 2] * torch.sin(rot)).reshape((human_batch, -1))
-        px1 = (human_state[:, 0] - robot_state[:, 0]) * torch.cos(rot) + (human_state[:, 1] - robot_state[:, 1]) * torch.sin(rot)
-        px1 = px1.reshape((human_batch, -1))
-        py1 = (human_state[:, 1] - robot_state[:, 1]) * torch.cos(rot) - (human_state[:, 0] - robot_state[:, 0]) * torch.sin(rot)
-        py1 = py1.reshape((human_batch, -1))
-        radius1 = human_state[:, 4].reshape((human_batch, -1))
-        # radius_sum =(width+length)/2 + radius1
-        radius_sum = radius + radius1
-        da = torch.norm(torch.cat([(human_state[:, 0] - robot_state[:, 0]).reshape((human_batch, -1)), (human_state[:, 1] - robot_state[:, 1]).
-                                  reshape((human_batch, -1))], dim=1), 2, dim=1, keepdim=True)
-        new_robot_state = torch.cat([dg, vx, vy, theta, radius], dim=1)
-        new_human_state = torch.cat([px1, py1, vx1, vy1, radius1, da, radius_sum], dim=1)
-        # new_state = torch.cat([dg, v_pref, theta, radius, vx, vy, px1, py1, vx1, vy1, radius1, da, radius_sum], dim=1)
-        return [new_robot_state, new_human_state]

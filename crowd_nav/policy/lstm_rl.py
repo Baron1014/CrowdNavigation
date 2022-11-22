@@ -102,7 +102,7 @@ class LstmRL(MultiHumanRL):
 
         def dist(human):
             # sort human order by decreasing distance to the robot
-            return np.linalg.norm(np.array(human.position) - np.array(state.robot_state.position))
+            return np.linalg.norm(np.array(human.position) - np.array(state.self_state.position))
 
         state.human_states = sorted(state.human_states, key=dist, reverse=True)
         return super().predict(state)

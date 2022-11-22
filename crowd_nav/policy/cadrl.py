@@ -3,7 +3,6 @@ import torch.nn as nn
 import numpy as np
 import itertools
 import logging
-from crowd_sim.envs.utils.utils import getCloestEdgeDist
 from crowd_sim.envs.policy.policy import Policy
 from crowd_sim.envs.utils.action import ActionRot, ActionXY
 from crowd_sim.envs.utils.state import ObservableState, FullState
@@ -123,18 +122,16 @@ class CADRL(Policy):
             if self.kinematics == 'holonomic':
                 next_px = state.px + action.vx * self.time_step
                 next_py = state.py + action.vy * self.time_step
-                next_state = FullState(next_px, next_py, action.vx, action.vy,
-                                    state.gx, state.gy, state.v_pref, state.theta, state.radius)
-                # next_state = RobotState(next_px, next_py, action.vx, action.vy,
-                #                        state.gx, state.gy, state.v_pref, state.theta, robot_size=(state.length, state.width))
+                next_state = FullState(next_px, next_py, action.vx, action.vy, state.radius,
+                                       state.gx, state.gy, state.v_pref, state.theta)
             else:
                 next_theta = state.theta + action.r
                 next_vx = action.v * np.cos(next_theta)
                 next_vy = action.v * np.sin(next_theta)
                 next_px = state.px + next_vx * self.time_step
                 next_py = state.py + next_vy * self.time_step
-                # next_state = RobotState(next_px, next_py, next_vx, next_vy, state.gx, state.gy,
-                #                        state.v_pref, next_theta, robot_size=(state.length, state.width))
+                next_state = FullState(next_px, next_py, next_vx, next_vy, state.radius, state.gx, state.gy,
+                                       state.v_pref, next_theta)
         else:
             raise ValueError('Type error')
 
@@ -159,7 +156,7 @@ class CADRL(Policy):
             self.build_action_space(state.robot_state.v_pref)
         if not state.human_states:
             assert self.phase != 'train'
-            return self.select_greedy_action(state.robot_state)
+            return self.select_greedy_action(state.self_state)
 
         probability = np.random.random()
         if self.phase == 'train' and probability < self.epsilon:
@@ -192,6 +189,32 @@ class CADRL(Policy):
             self.last_state = self.transform(state)
 
         return max_action
+    
+    def compute_reward(self, nav, humans):
+        # collision detection
+        dmin = float('inf')
+        collision = False
+        for i, human in enumerate(humans):
+            dist = np.linalg.norm((nav.px - human.px, nav.py - human.py)) - nav.radius - human.radius
+            if dist < 0:
+                collision = True
+                break
+            if dist < dmin:
+                dmin = dist
+
+        # check if reaching the goal
+        reaching_goal = np.linalg.norm((nav.px - nav.gx, nav.py - nav.gy)) < nav.radius
+        if collision:
+            reward = -0.25
+        elif reaching_goal:
+            reward = 1
+        elif dmin < 0.2:
+            reward = (dmin - 0.2) * 0.5 * self.time_step
+        else:
+            reward = 0
+
+        return reward
+
 
     def select_greedy_action(self, self_state):
         # find the greedy action given kinematic constraints and return the closest action in the action space
@@ -245,26 +268,23 @@ class CADRL(Policy):
         """
         Transform the coordinate to agent-centric.
         Input state tensor is of size (batch_size, state_length)
-        # 'px', 'py', 'vx', 'vy', 'gx', 'gy', 'v_pref', 'theta', 'robot_length', 'robot_width', 'px1', 'py1', 'vx1', 'vy1', 'radius1'
-        #  0     1      2     3     4     5     6          7           8               9          10      11     12    13      14
-        """    
-        # 'px', 'py', 'vx', 'vy', 'gx', 'gy', 'v_pref', 'theta', 'robot_radius', 'px1', 'py1', 'vx1', 'vy1', 'radius1'
-        #  0     1      2     3     4     5     6          7           8           9      10     11     12      13    
+
+        """
+        # 'px', 'py', 'vx', 'vy', 'radius', 'gx', 'gy', 'v_pref', 'theta', 'px1', 'py1', 'vx1', 'vy1', 'radius1'
+        #  0     1      2     3      4        5     6      7         8       9     10      11     12       13
         batch = state.shape[0]
-        dx = (state[:, 4] - state[:, 0]).reshape((batch, -1))
-        dy = (state[:, 5] - state[:, 1]).reshape((batch, -1))
-        rot = torch.atan2(state[:, 5] - state[:, 1], state[:, 4] - state[:, 0])
+        dx = (state[:, 5] - state[:, 0]).reshape((batch, -1))
+        dy = (state[:, 6] - state[:, 1]).reshape((batch, -1))
+        rot = torch.atan2(state[:, 6] - state[:, 1], state[:, 5] - state[:, 0])
 
         dg = torch.norm(torch.cat([dx, dy], dim=1), 2, dim=1, keepdim=True)
-        v_pref = state[:, 6].reshape((batch, -1))
+        v_pref = state[:, 7].reshape((batch, -1))
         vx = (state[:, 2] * torch.cos(rot) + state[:, 3] * torch.sin(rot)).reshape((batch, -1))
         vy = (state[:, 3] * torch.cos(rot) - state[:, 2] * torch.sin(rot)).reshape((batch, -1))
 
-        # length = state[:, 8].reshape((batch, -1))
-        # width = state[:, 9].reshape((batch, -1))
-        radius = state[:, 8].reshape((batch, -1))
+        radius = state[:, 4].reshape((batch, -1))
         if self.kinematics == 'unicycle':
-            theta = (state[:, 7] - rot).reshape((batch, -1))
+            theta = (state[:, 8] - rot).reshape((batch, -1))
         else:
             theta = torch.zeros_like(v_pref)
 
@@ -275,37 +295,8 @@ class CADRL(Policy):
         py1 = (state[:, 10] - state[:, 1]) * torch.cos(rot) - (state[:, 9] - state[:, 0]) * torch.sin(rot)
         py1 = py1.reshape((batch, -1))
         radius1 = state[:, 13].reshape((batch, -1))
-        # radius_sum =(width+length)/2 + radius1
         radius_sum = radius + radius1
         da = torch.norm(torch.cat([(state[:, 0] - state[:, 9]).reshape((batch, -1)), (state[:, 1] - state[:, 10]).
                                   reshape((batch, -1))], dim=1), 2, dim=1, keepdim=True)
         new_state = torch.cat([dg, v_pref, theta, radius, vx, vy, px1, py1, vx1, vy1, radius1, da, radius_sum], dim=1)
         return new_state
-
-    def compute_reward(self, nav, humans):
-        # collision detection
-        dmin = float('inf')
-        collision = False
-        for i, human in enumerate(humans):
-            # dist = getCloestEdgeDist(nav.px, nav.py, human.px, human.py, nav.width/2, nav.length/2) - human.radius
-            dist = np.linalg.norm((nav.px - human.px, nav.py - human.py)) - nav.radius - human.radius
-            if dist < 0:
-                collision = True
-                break
-            if dist < dmin:
-                dmin = dist
-
-        # check if reaching the goal
-        reaching_goal = np.linalg.norm((nav.px - nav.gx, nav.py - nav.gy)) < nav.radius
-        # goal_delta_x, goal_delta_y = nav.px - nav.gx, nav.py - nav.gy
-        # reaching_goal = abs(goal_delta_x) < nav.width/2 and abs(goal_delta_y) < nav.length/2
-        if collision:
-            reward = -0.25
-        elif reaching_goal:
-            reward = 1
-        elif dmin < 0.2:
-            reward = (dmin - 0.2) * 0.5 * self.time_step
-        else:
-            reward = 0
-
-        return reward

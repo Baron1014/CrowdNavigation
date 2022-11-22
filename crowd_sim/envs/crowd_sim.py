@@ -1,22 +1,18 @@
-from code import interact
 import logging
 import random
-import math
-from tkinter.ttk import Style
 
 import gym
-import copy
 import matplotlib.lines as mlines
 from matplotlib import patches
 import numpy as np
 from numpy.linalg import norm
 
 from crowd_sim.envs.policy.policy_factory import policy_factory
-from crowd_sim.envs.utils.state import tensor_to_joint_state, JointState
+from crowd_sim.envs.utils.state import tensor_to_joint_state
 from crowd_sim.envs.utils.action import ActionRot
 from crowd_sim.envs.utils.human import Human
 from crowd_sim.envs.utils.info import *
-from crowd_sim.envs.utils.utils import getCloestEdgeDist, point_to_clostest, checkonLinearEquationSide, point_to_segment_dist
+from crowd_sim.envs.utils.utils import point_to_segment_dist
 
 
 class CrowdSim(gym.Env):
@@ -76,10 +72,6 @@ class CrowdSim(gym.Env):
         self.human_goals = []
 
         self.phase = None
-        self.human_social_rate = 0.4
-        self.human_static_rate = 0.2
-        self._seed = None
-        self.interaction_lines = list()
 
     def configure(self, config):
         self.config = config
@@ -142,17 +134,13 @@ class CrowdSim(gym.Env):
             py = self.circle_radius * np.sin(angle) + py_noise
             collide = False
             for i, agent in enumerate([self.robot] + self.humans):
-                if i == 0 and agent.radius is None:
-                    agent_dist = (self.robot.width**2+self.robot.length**2)**0.5
-                else:
-                    agent_dist = agent.radius
-                if norm((px - agent.px, py - agent.py)) < agent_dist or \
-                        norm((px - agent.gx, py - agent.gy)) < agent_dist:
+                min_dist = human.radius + agent.radius + self.discomfort_dist
+                if norm((px - agent.px, py - agent.py)) < min_dist or \
+                        norm((px - agent.gx, py - agent.gy)) < min_dist:
                     collide = True
                     break
             if not collide:
                 break
-        # human.set(px, py, -px*4, -py*4, 0, 0, 0)
         human.set(px, py, -px, -py, 0, 0, 0)
 
         return human
@@ -234,8 +222,9 @@ class CrowdSim(gym.Env):
 
     def generate_robot(self):
         while True:
-            px, py, gx = np.random.uniform(-self.circle_radius, self.circle_radius, 3)
+            px, gx = np.random.uniform(-self.circle_radius, self.circle_radius, 2)
             # always to up
+            py = np.random.uniform(-self.circle_radius-1, -self.circle_radius+1)
             gy = np.random.uniform(self.circle_radius-1, self.circle_radius+1)
             if np.linalg.norm([px - gx, py - gy]) >= 10:
                 break
@@ -258,16 +247,17 @@ class CrowdSim(gym.Env):
 
         base_seed = {'train': self.case_capacity['val'] + self.case_capacity['test'],
                      'val': 0, 'test': self.case_capacity['val']}
+        # clean robot temporal memory
+        self.robot.clean_ego_memory()
 
         # (px, py, gx, gy, vx, vy, theta)
         # self.robot.set(0, -self.circle_radius, 0, self.circle_radius, 0, 0, 0)
         self.generate_robot()
         if self.case_counter[phase] >= 0:
-            self._seed = base_seed[phase] + self.case_counter[phase]
-            np.random.seed(self._seed)
-            random.seed(self._seed)
+            np.random.seed(base_seed[phase] + self.case_counter[phase])
+            random.seed(base_seed[phase] + self.case_counter[phase])
             if phase == 'test':
-                logging.info('current test seed is:{}'.format(self._seed))
+                logging.info('current test seed is:{}'.format(base_seed[phase] + self.case_counter[phase]))
             if not self.robot.policy.multiagent_training and phase in ['train', 'val']:
                 # only CADRL trains in circle crossing simulation
                 human_num = 1
@@ -422,11 +412,8 @@ class CrowdSim(gym.Env):
             ex = px + vx * self.time_step
             ey = py + vy * self.time_step
             # closest distance between boundaries of two agents
-            # robot_dist = (self.robot.width**2+self.robot.length**2)**0.5
             closest_dist = point_to_segment_dist(px, py, ex, ey, 0, 0) - human.radius - self.robot.radius
-            # closest_x, closest_y = point_to_clostest(px, py, ex, ey, 0, 0)
-            # closest_dist = getCloestEdgeDist(closest_x, closest_y, 0, 0, self.robot.width/2, self.robot.length/2) - human.radius
-            if closest_dist<0:
+            if closest_dist < 0:
                 collision = True
                 logging.debug("Collision: distance between robot and p{} is {:.2E} at time {:.2E}".format(human.id, closest_dist, self.global_time))
                 break
@@ -443,53 +430,33 @@ class CrowdSim(gym.Env):
                 if dist < 0:
                     # detect collision but don't take humans' collision into account
                     logging.debug('Collision happens between humans in step()')
-        
-        # check if crossing the human interaction
-        end_position = np.array(self.robot.compute_position(action, self.time_step))
-        interrupt = False
-        if self.current_scenario == "social_aware":
-            for i in range(0, len(self.humans), 2):
-                if self.humans[i].interaction is not None:
-                    human_point, neighbor_point = self.humans[i].get_position(), self.humans[i].interaction[0].get_position()
-                    rx, ry = self.robot.get_position()
-                    robot_current_side = checkonLinearEquationSide(*human_point, *neighbor_point, rx, ry)
-                    robot_end_side = checkonLinearEquationSide(*human_point, *neighbor_point, *end_position)
-                    left_x, right_x = (human_point[0], neighbor_point[0]) if human_point[0] < neighbor_point[0] else (neighbor_point[0], human_point[0])
-                    if robot_current_side != robot_end_side and left_x<rx<right_x:
-                        interrupt = True
-                        break
-            
 
         # check if reaching the goal
-        # goal_delta_x, goal_delta_y = end_position - np.array(self.robot.get_goal_position())
+        end_position = np.array(self.robot.compute_position(action, self.time_step))
         reaching_goal = norm(end_position - np.array(self.robot.get_goal_position())) < self.robot.radius
-        # reaching_goal = True if abs(goal_delta_x) < self.robot.width/2 and abs(goal_delta_y) < self.robot.length/2 else False
 
         if self.global_time >= self.time_limit - 1:
             reward = 0
             done = True
-            info = [Timeout()]
+            info = Timeout()
         elif collision:
             reward = self.collision_penalty
             done = True
-            info = [Collision()]
+            info = Collision()
         elif reaching_goal:
             reward = self.success_reward
             done = True
-            info = [ReachGoal()]
+            info = ReachGoal()
         elif dmin < self.discomfort_dist:
             # adjust the reward based on FPS
             reward = (dmin - self.discomfort_dist) * self.discomfort_penalty_factor * self.time_step
             done = False
-            info = [Discomfort(dmin)]
+            info = Discomfort(dmin)
         else:
             reward = 0
             done = False
-            info = [Nothing()]
+            info = Nothing()
 
-        if interrupt:
-            info.append(Interrupt())
-        
         if update:
             # store state, action value and attention weights
             if hasattr(self.robot.policy, 'action_values'):
@@ -560,10 +527,11 @@ class CrowdSim(gym.Env):
 
 
     def detect_visible(self, state1, state2):
-        if self.robot.kinematics == 'holonomic':
-            real_theta = np.arctan2(state1.vy, state1.vx)
-        else:
-            real_theta = state1.theta
+        # if self.robot.kinematics == 'holonomic':
+        #     real_theta = np.arctan2(state1.vy, state1.vx)
+        # else:
+        #     real_theta = state1.theta
+        real_theta = state1.theta
         # angle of center line of FOV of agent1
         v_fov = [np.cos(real_theta), np.sin(real_theta)]
 
@@ -687,7 +655,7 @@ class CrowdSim(gym.Env):
             show_human_start_goal = False
 
             # add human start positions and goals
-            human_colors = [cmap(i) for i in range(len(self.humans))]
+            # human_colors = [cmap(i) for i in range(len(self.humans))]
             if show_human_start_goal:
                 for i in range(len(self.humans)):
                     human = self.humans[i]
@@ -702,55 +670,45 @@ class CrowdSim(gym.Env):
             # add robot start position
             robot_start = mlines.Line2D([self.robot.get_start_position()[0]], [self.robot.get_start_position()[1]],
                                         color=robot_color,
-                                        marker='s', linestyle='None', markersize=8)
-            # robot_start_position = [self.robot.get_start_position()[0], self.robot.get_start_position()[1]]
-            # leftb_x, leftb_y = robot_start_position[0]-self.robot.width/2, robot_start_position[1]-self.robot.length/2
-            # robot_start = plt.Rectangle((leftb_x, leftb_y), self.robot.width, self.robot.length, fill=True, color=robot_color)
+                                        marker='o', linestyle='None', markersize=8)
             ax.add_artist(robot_start)
             # add robot and its goal
             robot_positions = [state[0].position for state in self.states]
             goal = mlines.Line2D([self.robot.get_goal_position()[0]], [self.robot.get_goal_position()[1]],
-                                 color=goal_color, marker='*', linestyle='None',
+                                 color=robot_color, marker='*', linestyle='None',
                                  markersize=15, label='Goal')
-            # robot_left_positions = []
-            # for x, y in robot_positions:
-            #     leftb_x, leftb_y = x-self.robot.width/2, y-self.robot.length/2
-            #     robot_left_positions.append((leftb_x, leftb_y))
-            # robot = patches.Rectangle(robot_left_positions[frame], self.robot.width, self.robot.length, fill=False, color=robot_color, label='Robot', rotation_point='center')
             robot = plt.Circle(robot_positions[0], self.robot.radius, fill=False, color=robot_color, label='Robot')
             # sensor_range = plt.Circle(robot_positions[0], self.robot_sensor_range, fill=False, ls='dashed')
-            ax.add_artist(goal)
             ax.add_artist(robot)
+            ax.add_artist(goal)
+            plt.legend([robot, goal], ['Robot', 'Goal'], fontsize=14)
 
             # add humans and their numbers
             human_positions = [[state[1][j].position for j in range(len(self.humans))] for state in self.states]
-            humans = [plt.Circle(human_positions[frame][i], self.humans[i].radius, fill=False, color=cmap(i))
+            humans = [plt.Circle(human_positions[0][i], self.humans[i].radius, fill=False, color=cmap(i))
                       for i in range(len(self.humans))]
-            # humans = [plt.Circle(human_positions[0][i], self.humans[i].radius, fill=False, color=human_color)
-            #           for i in range(len(self.humans))]
 
             # disable showing human numbers
             if display_numbers:
                 human_numbers = [plt.text(humans[i].center[0] - x_offset, humans[i].center[1] + y_offset, str(i),
                                           color='black') for i in range(len(self.humans))]
+            # disable showing FoV
+            if self.robot.FoV < np.pi * 2:
+                human_colors = []
+                for state in self.states:
+                    colors = []
+                    for h in range(len(humans)):
+                        # green: visible; red: invisible
+                        colors.append('g' if self.detect_visible(state[0], state[1][h]) else 'r')
+                    human_colors.append(colors)
 
             for i, human in enumerate(humans):
+                if self.robot.FoV < np.pi * 2:
+                    human.set_color(c=human_colors[0][i])
                 ax.add_artist(human)
                 if display_numbers:
                     ax.add_artist(human_numbers[i])
-            
-            for i in range(0, len(self.humans), 2):
-                if self.humans[i].interaction:
-                    human_x, human_y = human_positions[0][i]
-                    neightbor_x, neightbor_y = human_positions[0][i+1]
-                    theta = np.arctan2(neightbor_x-human_x, neightbor_y-human_y)
-                    h_x, n_x = human_x + self.humans[i].radius * np.sin(theta), neightbor_x - self.humans[i+1].radius * np.sin(theta)
-                    h_y, n_y = human_y + self.humans[i].radius * np.cos(theta), neightbor_y - self.humans[i+1].radius * np.cos(theta)
-                    self.interaction_lines.append(plt.plot([h_x, n_x], [h_y, n_y], 'k-')[0])
-            if len(self.interaction_lines) > 0:
-                plt.legend([robot, goal, self.interaction_lines[0]], ['Robot', 'Goal', 'Interaction'], fontsize=14)
-            else:
-                plt.legend([robot, goal], ['Robot', 'Goal'], fontsize=14)
+
             # add time annotation
             time = plt.text(0.4, 0.9, 'Time: {}'.format(0), fontsize=16, transform=ax.transAxes)
             ax.add_artist(time)
@@ -762,88 +720,115 @@ class CrowdSim(gym.Env):
             #                  fontsize=16) for i in range(len(self.humans))]
 
             # compute orientation in each step and use arrow to show the direction
-            # radius = self.robot.radius
-            agent_dist = 0.3
+            radius = self.robot.radius
             orientations = []
-            robot_theta = []
             for i in range(self.human_num + 1):
                 orientation = []
-                for s_id, state in enumerate(self.states):
+                for state in self.states:
                     agent_state = state[0] if i == 0 else state[1][i - 1]
                     if self.robot.kinematics == 'unicycle' and i == 0:
-                        # theta = np.arctan2(agent_state.vy, agent_state.vx)
-                        theta = agent_state.theta
-                        suqare_angle = theta* 180 / np.pi-90
-                        robot_theta.append(suqare_angle)
-                        x = agent_state.px 
-                        y = agent_state.py
                         direction = (
-                        (x, y), (x + agent_dist * np.cos(agent_state.theta),
-                                                           y + agent_dist * np.sin(agent_state.theta)))
+                        (agent_state.px, agent_state.py), (agent_state.px + radius * np.cos(agent_state.theta),
+                                                           agent_state.py + radius * np.sin(agent_state.theta)))
                     else:
                         theta = np.arctan2(agent_state.vy, agent_state.vx)
-                        # robot
-                        if i == 0:
-                            # robot center
-                            x = agent_state.px 
-                            y = agent_state.py
-                            direction = ((x, y), (x + agent_dist * np.cos(theta),
-                                                                        y + agent_dist * np.sin(theta)))
-                        else:
-                            direction = ((agent_state.px, agent_state.py), (agent_state.px + agent_dist * np.cos(theta),
-                                                                            agent_state.py + agent_dist * np.sin(theta)))
+                        direction = ((agent_state.px, agent_state.py), (agent_state.px + radius * np.cos(theta),
+                                                                        agent_state.py + radius * np.sin(theta)))
                     orientation.append(direction)
                 orientations.append(orientation)
-                if i == 0:   
+                if i == 0:
                     arrow_color = 'black'
-                    arrows = [patches.FancyArrowPatch(*orientation[frame], color=arrow_color, arrowstyle=arrow_style)]
+                    arrows = [patches.FancyArrowPatch(*orientation[0], color=arrow_color, arrowstyle=arrow_style)]
                 else:
                     arrows.extend(
-                        [patches.FancyArrowPatch(*orientation[0], color=human_colors[i - 1], arrowstyle=arrow_style)])
-                    # arrows.extend(
-                    #     [patches.FancyArrowPatch(*orientation[0], color=arrow_color, arrowstyle=arrow_style)])
-            
+                        [patches.FancyArrowPatch(*orientation[0], color=human_colors[0][i - 1], arrowstyle=arrow_style)])
+
             for arrow in arrows:
                 ax.add_artist(arrow)
             global_step = 0
-            if self.robot.kinematics == 'unicycle':
-                robot.set_angle(robot_theta[frame])
 
-            if len(self.trajs) != 0:
-                human_future_positions = []
-                human_future_circles = []
-                for traj in self.trajs:
-                    human_future_position = [[tensor_to_joint_state(traj[step+1][0]).human_states[i].position
-                                              for step in range(self.robot.policy.planning_depth)]
-                                             for i in range(self.human_num)]
-                    human_future_positions.append(human_future_position)
+            def calcFOVLineEndPoint(ang, point, extendFactor):
+                # choose the extendFactor big enough
+                # so that the endPoints of the FOVLine is out of xlim and ylim of the figure
+                FOVLineRot = np.array([[np.cos(ang), -np.sin(ang), 0],
+                                    [np.sin(ang), np.cos(ang), 0],
+                                    [0, 0, 1]])
+                point.extend([1])
+                # apply rotation matrix
+                newPoint = np.matmul(FOVLineRot, np.reshape(point, [3, 1]))
+                # increase the distance between the line start point and the end point
+                newPoint = [extendFactor * newPoint[0, 0], extendFactor * newPoint[1, 0], 1]
+                return newPoint
+            
+            def draw_fov(frame):            
+                # draw FOV for the robot
+                # add robot FOV
+                artists = []
+                if self.robot.FoV < np.pi * 2:
+                    FOVAng = self.robot.FoV / 2
+                    FOVLine1 = mlines.Line2D([0, 0], [0, 0], linestyle='--')
+                    FOVLine2 = mlines.Line2D([0, 0], [0, 0], linestyle='--')
 
-                for i in range(self.human_num):
-                    circles = []
-                    for j in range(self.robot.policy.planning_depth):
-                        if self.humans[i].static or self.humans[i].interaction:
-                            circle = None
-                        else:
-                            circle = plt.Circle(human_future_positions[0][i][j], self.humans[0].radius/(1.7+j), fill=False, color=cmap(i))
-                            ax.add_artist(circle)
-                        circles.append(circle)
-                    human_future_circles.append(circles)
+
+                    startPointX, startPointY = robot_positions[frame]
+                    endPointX = startPointX + radius* np.cos(self.robot.theta)
+                    endPointY = startPointY + radius* np.sin(self.robot.theta)
+
+                    # transform the vector back to world frame origin, apply rotation matrix, and get end point of FOVLine
+                    # the start point of the FOVLine is the center of the robot
+                    FOVEndPoint1 = calcFOVLineEndPoint(FOVAng, [endPointX - startPointX, endPointY - startPointY], 20. / self.robot.radius)
+                    FOVLine1.set_xdata(np.array([startPointX, startPointX + FOVEndPoint1[0]]))
+                    FOVLine1.set_ydata(np.array([startPointY, startPointY + FOVEndPoint1[1]]))
+                    FOVEndPoint2 = calcFOVLineEndPoint(-FOVAng, [endPointX - startPointX, endPointY - startPointY], 20. / self.robot.radius)
+                    FOVLine2.set_xdata(np.array([startPointX, startPointX + FOVEndPoint2[0]]))
+                    FOVLine2.set_ydata(np.array([startPointY, startPointY + FOVEndPoint2[1]]))
+
+                    ax.add_artist(FOVLine1)
+                    ax.add_artist(FOVLine2)
+                    artists.append(FOVLine1)
+                    artists.append(FOVLine2)
+                return artists
+
+            artists = draw_fov(0)
+            # if len(self.trajs) != 0:
+            #     human_future_positions = []
+            #     human_future_circles = []
+            #     for traj in self.trajs:
+            #         human_future_position = [[tensor_to_joint_state(traj[step+1][0]).human_states[i].position
+            #                                   for step in range(self.robot.policy.planning_depth)]
+            #                                  for i in range(self.human_num)]
+            #         human_future_positions.append(human_future_position)
+
+            #     for i in range(self.human_num):
+            #         circles = []
+            #         for j in range(self.robot.policy.planning_depth):
+            #             circle = plt.Circle(human_future_positions[0][i][j], self.humans[0].radius/(1.7+j), fill=False, color=cmap(i))
+            #             ax.add_artist(circle)
+            #             circles.append(circle)
+            #         human_future_circles.append(circles)
+            
+
 
             def update(frame_num):
                 nonlocal global_step
                 nonlocal arrows
+                nonlocal artists
                 global_step = frame_num
-                if self.robot.kinematics == 'unicycle':
-                    robot.set_angle(robot_theta[frame_num])
-                # robot.set_xy(robot_left_positions[frame_num])
                 robot.center = robot_positions[frame_num]
 
                 for i, human in enumerate(humans):
                     human.center = human_positions[frame_num][i]
+                    if self.robot.FoV < np.pi * 2:
+                        human.set_color(c=human_colors[frame_num][i])
                     if display_numbers:
                         human_numbers[i].set_position((human.center[0] - x_offset, human.center[1] + y_offset))
+
                 for arrow in arrows:
                     arrow.remove()
+                for artist in artists:
+                    artist.remove()
+
+                artists = draw_fov(frame_num)
 
                 for i in range(self.human_num + 1):
                     orientation = orientations[i]
@@ -851,7 +836,7 @@ class CrowdSim(gym.Env):
                         arrows = [patches.FancyArrowPatch(*orientation[frame_num], color='black',
                                                           arrowstyle=arrow_style)]
                     else:
-                        arrows.extend([patches.FancyArrowPatch(*orientation[frame_num], color=cmap(i - 1),
+                        arrows.extend([patches.FancyArrowPatch(*orientation[frame_num], color=human_colors[frame_num][i - 1],
                                                                arrowstyle=arrow_style)])
 
                 for arrow in arrows:
@@ -861,21 +846,11 @@ class CrowdSim(gym.Env):
 
                 time.set_text('Time: {:.2f}'.format(frame_num * self.time_step))
 
-                if len(self.trajs) != 0:
-                    for i, circles in enumerate(human_future_circles):
-                        for j, circle in enumerate(circles):
-                            if circle is not None:
-                                circle.center = human_future_positions[global_step][i][j]
-                
-                for i in range(0, len(self.humans), 2):
-                    if self.humans[i].interaction:
-                        human_x, human_y = human_positions[frame_num][i]
-                        neightbor_x, neightbor_y = human_positions[frame_num][i+1]
-                        theta = np.arctan2(neightbor_x-human_x, neightbor_y-human_y)
-                        h_x, n_x = human_x + self.humans[i].radius * np.sin(theta), neightbor_x - self.humans[i+1].radius * np.sin(theta)
-                        h_y, n_y = human_y + self.humans[i].radius * np.cos(theta), neightbor_y - self.humans[i+1].radius * np.cos(theta)
-                        interaction_line = self.interaction_lines[i//2] 
-                        interaction_line.set_data([h_x, n_x], [h_y, n_y])
+                # if len(self.trajs) != 0:
+                #     for i, circles in enumerate(human_future_circles):
+                #         for j, circle in enumerate(circles):
+                #             circle.center = human_future_positions[global_step][i][j]
+
                 if info:
                     if len(self.states)-1 == frame_num:
                         if str(info)=='Collision':

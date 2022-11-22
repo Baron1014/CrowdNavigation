@@ -31,7 +31,6 @@ class MPRLTrainer(object):
         self.share_graph_model = share_graph_model
         self.v_optimizer = None
         self.s_optimizer = None
-        self.graph_edge = policy.get_edge()
 
         # for value update
         self.gamma = 0.9
@@ -101,9 +100,8 @@ class MPRLTrainer(object):
                     update_counter += 1
 
             logging.debug('{}-th epoch ends'.format(epoch))
-            if self.writer != None:
-                self.writer.log({'IL/epoch_v_loss': epoch_v_loss / len(self.memory)}, step=epoch)
-                self.writer.log({'IL/epoch_s_loss': epoch_s_loss / len(self.memory)}, step=epoch)
+            self.writer.log({'IL/epoch_v_loss': epoch_v_loss / len(self.memory)}, step=epoch)
+            self.writer.log({'IL/epoch_s_loss': epoch_s_loss / len(self.memory)}, step=epoch)
             logging.info('Average loss in epoch %d: value loss=%.2E, graph loss=%.2E', epoch, epoch_v_loss / len(self.memory),
                          epoch_s_loss / len(self.memory))
 
@@ -157,9 +155,8 @@ class MPRLTrainer(object):
         average_v_loss = v_losses / num_batches
         average_s_loss = s_losses / num_batches
         logging.info('Average loss : %.2E, %.2E', average_v_loss, average_s_loss)
-        if self.writer != None:
-            self.writer.log({'RL/average_v_loss': average_v_loss}, step=episode)
-            self.writer.log({'RL/average_s_loss': average_s_loss}, step=episode)
+        self.writer.log({'RL/average_v_loss': average_v_loss}, step=episode)
+        self.writer.log({'RL/average_s_loss': average_s_loss}, step=episode)
 
         return average_v_loss, average_s_loss
 
@@ -220,8 +217,7 @@ class VNRLTrainer(object):
                 epoch_loss += loss.data.item()
             logging.debug('{}-th epoch ends'.format(epoch))
             average_epoch_loss = epoch_loss / len(self.memory)
-            if self.writer != None:
-                self.writer.log({'IL/epoch_v_loss': average_epoch_loss}, step=epoch)
+            self.writer.log({'IL/epoch_v_loss': average_epoch_loss}, step=epoch)
             logging.info('Average loss in epoch %d: %.2E', epoch, average_epoch_loss)
 
         return average_epoch_loss
@@ -251,8 +247,7 @@ class VNRLTrainer(object):
 
         average_loss = losses / num_batches
         logging.info('Average loss : %.2E', average_loss)
-        if self.writer != None:
-            self.writer.log({'RL/average_v_loss': average_loss}, step=episode)
+        self.writer.log({'RL/average_v_loss': average_loss}, step=episode)
 
         return average_loss
 
@@ -283,8 +278,7 @@ class GRAPHTrainer(VNRLTrainer):
                 epoch_loss += loss.data.item()
             logging.debug('{}-th epoch ends'.format(epoch))
             average_epoch_loss = epoch_loss / len(self.memory)
-            if self.writer != None:
-                self.writer.log({'IL/epoch_v_loss': average_epoch_loss}, step=epoch)
+            self.writer.log({'IL/epoch_v_loss': average_epoch_loss}, step=epoch)
             logging.info('Average loss in epoch %d: %.2E', epoch, average_epoch_loss)
 
         return average_epoch_loss
@@ -316,8 +310,7 @@ class GRAPHTrainer(VNRLTrainer):
 
         average_loss = losses / num_batches
         logging.info('Average loss : %.2E', average_loss)
-        if self.writer != None:
-            self.writer.log({'RL/average_v_loss': average_loss}, step=episode)
+        self.writer.log({'RL/average_v_loss': average_loss}, step=episode)
 
         return average_loss
 
@@ -339,7 +332,7 @@ class TGRLTrainer(GRAPHTrainer):
             for data in self.data_loader:
                 r_graph, hs_graph, adj_matrix, values, _, _, _, _ = data
                 self.optimizer.zero_grad()
-                outputs = self.model(r_graph, hs_graph, adj_matrix.squeeze())
+                outputs = self.model(r_graph, hs_graph, adj_matrix)
                 values = values.to(self.device)
                 loss = self.criterion(outputs, values)
                 loss.backward()
@@ -347,8 +340,7 @@ class TGRLTrainer(GRAPHTrainer):
                 epoch_loss += loss.data.item()
             logging.debug('{}-th epoch ends'.format(epoch))
             average_epoch_loss = epoch_loss / len(self.memory)
-            if self.writer != None:
-                self.writer.log({'IL/epoch_v_loss': average_epoch_loss}, step=epoch)
+            self.writer.log({'IL/epoch_v_loss': average_epoch_loss}, step=epoch)
             logging.info('Average loss in epoch %d: %.2E', epoch, average_epoch_loss)
 
         return average_epoch_loss
@@ -365,10 +357,10 @@ class TGRLTrainer(GRAPHTrainer):
         for data in self.data_loader:
             r_graph, hs_graph, adj_matrix, _, rewards, next_r_graph, next_hs_graph, next_adj_matrix = data
             self.optimizer.zero_grad()
-            outputs = self.model(r_graph, hs_graph, adj_matrix.squeeze()).unsqueeze(0)
+            outputs = self.model(r_graph, hs_graph, adj_matrix)
 
             gamma_bar = pow(self.gamma, self.time_step * self.v_pref)
-            target_values = rewards + gamma_bar * self.target_model(next_r_graph, next_hs_graph, next_adj_matrix.squeeze())
+            target_values = rewards + gamma_bar * self.target_model(next_r_graph, next_hs_graph, next_adj_matrix)
 
             loss = self.criterion(outputs, target_values)
             loss.backward()
@@ -380,8 +372,7 @@ class TGRLTrainer(GRAPHTrainer):
 
         average_loss = losses / num_batches
         logging.info('Average loss : %.2E', average_loss)
-        if self.writer != None:
-            self.writer.log({'RL/average_v_loss': average_loss}, step=episode)
+        self.writer.log({'RL/average_v_loss': average_loss}, step=episode)
 
         return average_loss
 

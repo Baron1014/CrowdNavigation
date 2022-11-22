@@ -56,9 +56,9 @@ class ConvTemporalGraphical(nn.Module):
             bias=bias)
 
     def forward(self, x, A):
-        assert A.size(0) == self.kernel_size
+        # assert A.size(0) == self.kernel_size
         x = self.conv(x)
-        x = torch.einsum('nctv,tvw->nctw', (x, A))
+        x = torch.einsum('nctv,ntvw->nctw', (x, A))
         return x.contiguous(), A
     
 
@@ -293,7 +293,7 @@ class SSTGCNN_RL(DGCNRL):
                 next_self_state = self_states + [next_self_state]
                 next_human_states = humans_states + [next_human_states]
                 [r_graph, hs_graph], adj_matrix = self.to_graph([next_self_state, next_human_states])
-                outputs = self.model(r_graph.unsqueeze(0), hs_graph.unsqueeze(0), adj_matrix).to(self.device)
+                outputs = self.model(r_graph.unsqueeze(0), hs_graph.unsqueeze(0), adj_matrix.unsqueeze(0)).to(self.device)
                 min_output, min_index = torch.min(outputs, 0)
                 min_value = reward + pow(self.gamma, self.time_step * state.robot_state.v_pref) * min_output.data.item()
                 self.action_values.append(min_value)
@@ -339,9 +339,9 @@ class SSTGCNN_RL(DGCNRL):
                     curr_ped_seq[:, 1:] - curr_ped_seq[:, :-1]
                 curr_seq_rel[i, :, :] = rel_curr_ped_seq
 
-                #Convert to Graphs
-                a_ = self.seq_to_attrgraph(curr_seq_rel,self.norm_lap_matr).to(self.device)
-                vh_ = self.seq_to_nodes(human_seq_feature).to(self.device)
+            #Convert to Graphs
+            a_ = self.seq_to_attrgraph(curr_seq_rel,self.norm_lap_matr).to(self.device)
+            vh_ = self.seq_to_nodes(human_seq_feature).to(self.device)
         else:
             a_ = torch.tensor([]).to(self.device)
             vh_ = torch.tensor([]).to(self.device)
@@ -361,8 +361,8 @@ class SSTGCNN_RL(DGCNRL):
             if self.kinematics == 'holonomic':
                 next_px = state.px + action.vx * self.time_step
                 next_py = state.py + action.vy * self.time_step
-                next_state = FullState(next_px, next_py, action.vx, action.vy,
-                                    state.gx, state.gy, state.v_pref, state.theta, state.radius)
+                next_state = FullState(next_px, next_py, action.vx, action.vy, state.radius,
+                                    state.gx, state.gy, state.v_pref, state.theta)
                 # next_state = RobotState(next_px, next_py, action.vx, action.vy,
                 #                        state.gx, state.gy, state.v_pref, state.theta, robot_size=(state.length, state.width))
             else:

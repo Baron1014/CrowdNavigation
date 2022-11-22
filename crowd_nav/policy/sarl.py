@@ -55,7 +55,6 @@ class ValueNetwork(nn.Module):
 
         # masked softmax
         mask = rnn_utils.pad_sequence([torch.ones(length.item()) for length in lengths], batch_first=True)
-        # mask = rnn_utils.pad_sequence([torch.ones(length.item()) for length in lengths], batch_first=True).cuda()
         masked_scores = scores * mask.float()
         max_scores = torch.max(masked_scores, dim=1, keepdim=True)[0]
         exps = torch.exp(masked_scores - max_scores)

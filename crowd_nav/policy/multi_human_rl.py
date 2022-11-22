@@ -5,7 +5,6 @@ from crowd_sim.envs.utils.action import ActionRot, ActionXY
 from crowd_nav.policy.cadrl import CADRL
 
 
-
 class MultiHumanRL(CADRL):
     def __init__(self):
         super().__init__()
@@ -78,7 +77,7 @@ class MultiHumanRL(CADRL):
         :param state:
         :return: tensor of shape (# of humans, len(state))
         """
-        state_tensor = torch.cat([torch.Tensor([state.robot_state + human_state])
+        state_tensor = torch.cat([torch.Tensor([state.robot_state + human_state]).to(self.device)
                                   for human_state in state.human_states], dim=0)
         rotated_state_tensor = self.rotate(state_tensor)
         if self.with_om:
