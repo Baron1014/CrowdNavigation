@@ -107,6 +107,10 @@ class RGL(nn.Module):
 
         # compute feature matrix X
         robot_state_embedings = self.w_r(robot_state)
+        # for FoV error 
+        if len(human_states)==0:
+            return robot_state_embedings
+
         human_state_embedings = self.w_h(human_states)
         X = torch.cat([robot_state_embedings, human_state_embedings], dim=1)
 

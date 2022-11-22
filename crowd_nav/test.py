@@ -86,6 +86,16 @@ def main(args):
     robot.set_fov(args.robot_fov)
     env.set_robot(robot)
     robot.time_step = env.time_step
+    if args.policy=='orca':
+        train_config = config.TrainConfig(args.debug)
+        if robot.visible:
+            safety_space = 0
+        else:
+            safety_space = train_config.imitation_learning.safety_space
+        il_policy = train_config.imitation_learning.il_policy
+        policy = policy_factory[il_policy]()
+        policy.multiagent_training = policy.multiagent_training
+        policy.safety_space = safety_space
     robot.set_policy(policy)
     explorer = Explorer(env, robot, device, None, gamma=0.9)
 

@@ -23,8 +23,12 @@ class StatePredictor(nn.Module):
         :return: tensor of shape (batch_size, # of agents, feature_size)
         """
         assert len(state[0].shape) == 3
-        assert len(state[1].shape) == 3
-
+        # for Fov error
+        # assert len(state[1].shape) == 3
+        if state[1].shape[1]==0:
+            next_robot_state = self.compute_next_state(state[0], action)
+            return [next_robot_state, []]
+            
         state_embedding = self.graph_model(state)
         if detach:
             state_embedding = state_embedding.detach()
