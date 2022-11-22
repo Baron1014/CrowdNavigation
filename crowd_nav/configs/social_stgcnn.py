@@ -4,7 +4,7 @@ from crowd_nav.configs import rgl
 class EnvConfig(rgl.EnvConfig):
     def __init__(self, debug=False):
         super(EnvConfig, self).__init__(debug)
-        # self.robot.sensor = 'RGBD'
+        self.robot.sensor = 'RGBD'
 
 
 class PolicyConfig(rgl.PolicyConfig):

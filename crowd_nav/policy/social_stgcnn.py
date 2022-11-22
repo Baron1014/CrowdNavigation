@@ -4,7 +4,7 @@ import numpy as np
 import math
 import networkx as nx
 from crowd_nav.policy.helpers import mlp
-from crowd_nav.policy.dgcnrl import DGCNRL
+from crowd_nav.policy.model_predictive_rl import ModelPredictiveRL
 from crowd_sim.envs.utils.action import ActionRot, ActionXY
 from crowd_sim.envs.utils.state import ObservableState, FullState
 
@@ -204,7 +204,7 @@ class social_stgcnn(nn.Module):
         
         return value
 
-class SSTGCNN_RL(DGCNRL):
+class SSTGCNN_RL(ModelPredictiveRL):
     def __init__(self):
         super().__init__()
         self.name = 'SSTGCNN_RL'
@@ -416,3 +416,52 @@ class SSTGCNN_RL(DGCNRL):
                 V[s,h,:] = step_rel[h]
                 
         return torch.from_numpy(V).type(torch.float)
+
+
+    def set_device(self, device):
+        self.device = device
+        self.model.to(device)
+
+    def get_model(self):
+        return self.model
+
+    def save_model(self, file):
+        torch.save(self.model.state_dict(), file)
+
+    def set_time_step(self, time_step):
+        self.time_step = time_step
+        self.model.time_step = time_step
+
+    def get_state_dict(self):
+        return self.model.state_dict()
+    
+    def load_state_dict(self, state_dict):
+        self.model.load_state_dict(state_dict)
+
+    def compute_reward(self, nav, humans):
+        # collision detection
+        dmin = float('inf')
+        collision = False
+        for i, human in enumerate(humans):
+            # dist = getCloestEdgeDist(nav.px, nav.py, human.px, human.py, nav.width/2, nav.length/2) - human.radius
+            dist = np.linalg.norm((nav.px - human.px, nav.py - human.py)) - nav.radius - human.radius
+            if dist < 0:
+                collision = True
+                break
+            if dist < dmin:
+                dmin = dist
+
+        # check if reaching the goal
+        reaching_goal = np.linalg.norm((nav.px - nav.gx, nav.py - nav.gy)) < nav.radius
+        # goal_delta_x, goal_delta_y = nav.px - nav.gx, nav.py - nav.gy
+        # reaching_goal = abs(goal_delta_x) < nav.width/2 and abs(goal_delta_y) < nav.length/2
+        if collision:
+            reward = -0.25
+        elif reaching_goal:
+            reward = 1
+        elif dmin < 0.2:
+            reward = (dmin - 0.2) * 0.5 * self.time_step
+        else:
+            reward = 0
+
+        return reward
