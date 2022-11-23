@@ -16,3 +16,5 @@ crowd_nav/sarl_output/__pycache__/
 ros/detection/__pycache__/
 
 RGL_output_gpu/
+
+cadrl_output/

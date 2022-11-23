@@ -45,3 +45,5 @@ class Robot(Agent):
 
     def set_fov(self, fov):
         self.FoV = np.pi * fov if fov is not None else None
+        if self.FoV is not None:
+            self.sensor = 'RGBD'
