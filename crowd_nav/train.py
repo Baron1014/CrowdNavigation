@@ -38,7 +38,8 @@ class WandbWriter:
             self.writer.log(info, step=step)
     
     def summary(self, key, value):
-        self.writer.run.summary[key] = value
+        if self.writer is not None:
+            self.writer.run.summary[key] = value
     
     def finish(self):
         if self.writer is not None:
