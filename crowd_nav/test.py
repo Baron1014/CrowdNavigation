@@ -182,7 +182,7 @@ if __name__ == '__main__':
     parser.add_argument('-d', '--planning_depth', type=int, default=None)
     parser.add_argument('-w', '--planning_width', type=int, default=None)
     parser.add_argument('--sparse_search', default=False, action='store_true')
-    parser.add_argument('-fov', '--robot_fov', type=int, default=None)
+    parser.add_argument('-fov', '--robot_fov', type=float, default=None)
 
     sys_args = parser.parse_args()
 

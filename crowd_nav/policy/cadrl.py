@@ -156,7 +156,7 @@ class CADRL(Policy):
             self.build_action_space(state.robot_state.v_pref)
         if not state.human_states:
             assert self.phase != 'train'
-            return self.select_greedy_action(state.self_state)
+            return self.select_greedy_action(state.robot_state)
 
         probability = np.random.random()
         if self.phase == 'train' and probability < self.epsilon:

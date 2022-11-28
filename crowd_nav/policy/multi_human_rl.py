@@ -29,6 +29,9 @@ class MultiHumanRL(CADRL):
             if hasattr(self, 'attention_weights'):
                 self.attention_weights = list()
             return self.select_greedy_action(state.robot_state)
+        if len(state.human_states)<2 and self.name=='OM-SARL':
+            assert self.phase != 'train'
+            return self.select_greedy_action(state.robot_state)
 
         occupancy_maps = None
         probability = np.random.random()
