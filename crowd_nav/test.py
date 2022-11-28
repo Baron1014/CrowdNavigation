@@ -141,7 +141,7 @@ def main(args):
                     args.video_file = os.path.join(args.video_dir, policy_config.name + '_' + policy_config.gcn.similarity_function)
                 else:
                     args.video_file = os.path.join(args.video_dir, policy_config.name)
-                args.video_file = args.video_file + '_' + args.phase + '_' + str(args.test_case) + '.gif'
+                args.video_file = args.video_file + f'_fov{args.robot_fov}_' + args.phase + '_' + str(args.test_case) + '.gif'
             env.render('video', args.video_file, info)
         logging.info('It takes %.2f seconds to finish. Final status is %s, cumulative_reward is %f', env.global_time, info, cumulative_reward)
         if robot.visible and info == 'reach goal':
