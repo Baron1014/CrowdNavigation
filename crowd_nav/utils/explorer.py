@@ -181,8 +181,8 @@ class Explorer(object):
                     value = 0
             value = torch.Tensor([value]).to(self.device)
             reward = torch.Tensor([rewards[i]]).to(self.device)
-            current_human_num = 0 if len(graph[1])==0 else graph[1].shape[1]
-            next_human_num = 0 if len(graphs[g_idx+1][1])==0 else graphs[g_idx+1][1].shape[1]
+            current_human_num = 0 if len(graph[1])==0 else graph[1].shape[2]
+            next_human_num = 0 if len(graphs[g_idx+1][1])==0 else graphs[g_idx+1][1].shape[2]
             if current_human_num == next_human_num:
                 # only push human number of current state equal to next state
                 self.memory.push((graph[0], graph[1], adj_matrixs[g_idx], value, reward, graphs[g_idx+1][0], graphs[g_idx+1][1], adj_matrixs[g_idx+1]))

@@ -430,13 +430,13 @@ class SSTGCNN_RL(ModelPredictiveRL):
         node_feature_num = seq_rel.shape[2]
         batch=seq_rel.shape[0]
         
-        V = np.zeros((batch, seq_len,max_nodes,node_feature_num))
+        V = torch.zeros((batch, seq_len,max_nodes,node_feature_num))
         for s in range(seq_len):
             step_rel = seq_rel[:,:,:,s]
             for h in range(step_rel.shape[1]): 
                 V[:,s,h,:] = step_rel[:,h]
                 
-        return torch.from_numpy(V).type(torch.float)
+        return V.type(torch.float)
 
 
     def set_device(self, device):
