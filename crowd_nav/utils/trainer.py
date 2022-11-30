@@ -334,7 +334,7 @@ class TGRLTrainer(GRAPHTrainer):
                     mini_data = self.get_mini_batch(data, unique_h)
                     r_graph, hs_graph, adj_matrix, values, _, _, _, _ = mini_data
                     self.optimizer.zero_grad()
-                    outputs = self.model(r_graph, hs_graph, adj_matrix)
+                    outputs = self.model(r_graph.squeeze(1), hs_graph.squeeze(1), adj_matrix.squeeze(1))
                     values = values.to(self.device)
                     loss = self.criterion(outputs, values)
                     loss.backward()
@@ -421,7 +421,7 @@ def temporal_graph_batch(batch):
     mini_batch = {}
     for data in batch:
         _, hs_graph, _, _,  _, _, _, _ = data
-        hum_num = hs_graph.shape[1]
+        hum_num = 0 if len(hs_graph)==0 else hs_graph.shape[1]
         if hum_num not in mini_batch:
             mini_batch[hum_num] = {
                 'r_graph': [], 'hs_graph': [], 'adj_matrix': [],

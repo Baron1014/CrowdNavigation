@@ -7,6 +7,7 @@ from crowd_nav.policy.helpers import mlp
 from crowd_nav.policy.model_predictive_rl import ModelPredictiveRL
 from crowd_sim.envs.utils.action import ActionRot, ActionXY
 from crowd_sim.envs.utils.state import ObservableState, FullState
+from crowd_sim.envs.utils.robot import sliceable_deque
 
 
 class ConvTemporalGraphical(nn.Module):
@@ -280,6 +281,7 @@ class SSTGCNN_RL(ModelPredictiveRL):
             self.action_values = list()
             max_min_value = float('-inf')
             max_action = None
+            all_action_self_states, all_action_human_states, rewards = [], [], []
             for action in self.action_space:
                 next_self_state = self.propagate(state.robot_state, action)
                 next_human_states = [self.propagate(human_state, ActionXY(human_state.vx, human_state.vy))
@@ -290,65 +292,82 @@ class SSTGCNN_RL(ModelPredictiveRL):
                     to(self.device)
 
                 # VALUE UPDATE
-                next_self_state = self_states + [next_self_state]
-                next_human_states = humans_states + [next_human_states]
-                [r_graph, hs_graph], adj_matrix = self.to_graph([next_self_state, next_human_states])
-                outputs = self.model(r_graph.unsqueeze(0), hs_graph.unsqueeze(0), adj_matrix.unsqueeze(0)).to(self.device)
-                min_output, min_index = torch.min(outputs, 0)
-                min_value = reward + pow(self.gamma, self.time_step * state.robot_state.v_pref) * min_output.data.item()
-                self.action_values.append(min_value)
-                if min_value > max_min_value:
-                    max_min_value = min_value
-                    max_action = action
+                _next_self_state = self_states + [next_self_state]
+                _next_human_states = humans_states + [next_human_states]
+                all_action_self_states.append(next_self_state)
+                all_action_human_states.append(next_human_states)
+                rewards.append(reward)
+            [r_graph, hs_graph], adj_matrix = self.to_graph([self_states, humans_states], [all_action_self_states, all_action_human_states])
+            outputs = self.model(r_graph, hs_graph, adj_matrix).to(self.device)
+            self.action_values = [rewards[i] + pow(self.gamma, self.time_step * state.robot_state.v_pref) * outputs[i].data.item() for i in range(len(rewards))]
+            max_action = self.action_space[self.action_values.index(max(self.action_values))]
+
 
         if self.phase == 'train':
             self.last_state = self.transform(state)
 
         return max_action
 
-    def to_graph(self, state):
+    def to_graph(self, state, next_state=None):
         robot_state, human_states = state
-        obs_len = len(robot_state)
-        robot_seq_feature = torch.zeros((1, robot_state[0].shape[1], obs_len))
-        if len(human_states[-1])!=0:
-            curr_seq_humans = torch.cat([*human_states], dim=0)
-            peds_in_curr_seq = torch.unique(curr_seq_humans[:, 0])
-            curr_seq_rel = torch.zeros((len(peds_in_curr_seq)+1, 2,
-                                            obs_len))
-            human_seq_feature = torch.zeros((len(peds_in_curr_seq), human_states[-1].shape[1]-1, obs_len)) # remove human id
-            for i, ped_id in enumerate([0]+peds_in_curr_seq.tolist()):
-                if ped_id == 0: # robot
-                    curr_robot_seq = torch.cat([*robot_state], dim=0)
-                    robot_seq_feature[i, :, :] = curr_robot_seq.t()
-                    curr_ped_seq = curr_robot_seq[:, :2].t()
-                else:
-                    curr_ped_seq = curr_seq_humans[curr_seq_humans[:, 0] ==
-                                                        ped_id, :]
-                    # if observate lens is not enough just fill last state
-                    if len(curr_ped_seq) != obs_len:
-                        last_ped_state = curr_ped_seq[-1, :].unsqueeze(0)
-                        fill_state_num = obs_len - len(curr_ped_seq)
-                        for _ in range(fill_state_num):
-                            curr_ped_seq = torch.cat((curr_ped_seq, last_ped_state), dim=0)
-                    human_seq_feature[i-1, :, :] = curr_ped_seq[:, 1:].t() # remove human id
-                    curr_ped_seq = torch.round(curr_ped_seq, decimals=4)
-                    curr_ped_seq = curr_ped_seq[:, 1:3].t()
-                # Make coordinates relative
-                rel_curr_ped_seq = torch.zeros(curr_ped_seq.shape)
-                rel_curr_ped_seq[:, 1:] = \
-                    curr_ped_seq[:, 1:] - curr_ped_seq[:, :-1]
-                curr_seq_rel[i, :, :] = rel_curr_ped_seq
-
-            #Convert to Graphs
-            a_ = self.seq_to_attrgraph(curr_seq_rel,self.norm_lap_matr).to(self.device)
-            vh_ = self.seq_to_nodes(human_seq_feature).to(self.device)
+        obs_len = len(robot_state) if isinstance(robot_state, sliceable_deque) else len(robot_state)+1
+        # init robot
+        if next_state is not None:
+            all_next_self_state, all_next_human_states = next_state
+            batch = len(all_next_self_state)
+            all_history_self_state = [torch.cat([*robot_state], dim=0) for _ in range(batch)]
+            robot_seq_feature = torch.zeros((batch, 1, robot_state[0].shape[1], obs_len))
+            next_robot_feature = torch.stack(all_next_self_state)
+            curr_robot_seq = torch.cat((torch.stack(all_history_self_state), next_robot_feature), dim=1)
         else:
+            batch = 1
+            all_history_self_state = [torch.cat([*robot_state], dim=0) for _ in range(batch)]
+            robot_seq_feature = torch.zeros((batch, 1, robot_state[0].shape[1], obs_len))
+            curr_robot_seq = torch.stack(all_history_self_state)
+        curr_robot_seq = curr_robot_seq.unsqueeze(1)
+        robot_seq_feature = curr_robot_seq.permute(0,1,3,2)
+        # init human
+        if len(human_states[-1])==0:
             a_ = torch.tensor([]).to(self.device)
             vh_ = torch.tensor([]).to(self.device)
-
+        else:
+            all_history_human_states = [torch.cat([*human_states], dim=0) for _ in range(batch)]
+            curr_seq_humans = torch.stack(all_history_human_states)
+            if next_state is not None:
+                next_human_feature = torch.stack(all_next_human_states)
+                curr_seq_humans = torch.cat((curr_seq_humans, next_human_feature), dim=1)
+            peds_in_curr_seq = torch.unique(curr_seq_humans[:, :, 0])
+            curr_seq_rel = torch.zeros((batch, len(peds_in_curr_seq)+1, 2,
+                                            obs_len))
+            human_seq_feature = torch.zeros((batch, len(peds_in_curr_seq), human_states[-1].shape[1]-1, obs_len)) # remove human id
+            for i, ped_id in enumerate([0]+peds_in_curr_seq.tolist()):
+                if ped_id == 0: # robot
+                    curr_ped_seq = curr_robot_seq[:, :, :, :2].permute(0,1,3,2)
+                    curr_ped_seq = curr_ped_seq.squeeze(1)
+                else:
+                    curr_ped_seq = curr_seq_humans[curr_seq_humans[:, :, 0] ==
+                                                        ped_id, :].reshape(batch, -1, curr_seq_humans.shape[2])
+                    # if observate lens is not enough just fill last state
+                    if curr_ped_seq.shape[1] != obs_len:
+                        last_ped_state = curr_ped_seq[:,-1:, :]
+                        fill_state_num = obs_len - curr_ped_seq.shape[1]
+                        for _ in range(fill_state_num):
+                            curr_ped_seq = torch.cat((curr_ped_seq, last_ped_state), dim=1)
+                    human_seq_feature[:, i-1, :, :] = curr_ped_seq[:, :, 1:].permute(0,2,1) # remove human id
+                    curr_ped_seq = torch.round(curr_ped_seq, decimals=4)
+                    curr_ped_seq = curr_ped_seq[:, :, 1:3].permute(0,2,1)
+                # Make coordinates relative
+                rel_curr_ped_seq = torch.zeros(curr_ped_seq.shape)
+                rel_curr_ped_seq[:, :, 1:] = \
+                    curr_ped_seq[:, :, 1:] - curr_ped_seq[:, :, :-1]
+                curr_seq_rel[:, i, :, :] = rel_curr_ped_seq
+            #Convert to Graphs
+            a_ = self.seq_to_attrgraph(curr_seq_rel,self.norm_lap_matr).to(self.device)
+            vh_ = self.seq_to_nodes(human_seq_feature).to(self.device)  
         vr_ = self.seq_to_nodes(robot_seq_feature).to(self.device)
         return [vr_, vh_], a_
-    
+
+
     def propagate(self, state, action):
         if isinstance(state, ObservableState):
             # propagate state of humans
@@ -379,41 +398,43 @@ class SSTGCNN_RL(ModelPredictiveRL):
         return next_state
 
     def anorm(self, p1,p2): 
-        NORM = math.sqrt((p1[0]-p2[0])**2+ (p1[1]-p2[1])**2)
-        if NORM ==0:
-            return 0
-        return 1/(NORM)
+        NORM = torch.sqrt((p1[:, 0]-p2[:, 0])**2+ (p1[:, 1]-p2[:, 1])**2)
+        NORM = 1/(NORM)
+        NORM[NORM == float("Inf")] = 0
+        return NORM
 
     def seq_to_attrgraph(self, seq_rel,norm_lap_matr = True):
-        seq_rel = seq_rel.squeeze()
-        seq_len = seq_rel.shape[2]
-        max_nodes = seq_rel.shape[0]
+        seq_len = seq_rel.shape[3]
+        max_nodes = seq_rel.shape[1]
+        batch=seq_rel.shape[0]
 
-        A = np.zeros((seq_len,max_nodes,max_nodes))
+        A = np.zeros((batch, seq_len,max_nodes,max_nodes))
         for s in range(seq_len):
-            step_rel = seq_rel[:,:,s]
-            for h in range(len(step_rel)): 
-                A[s,h,h] = 1
-                for k in range(h+1,len(step_rel)):
-                    l2_norm = self.anorm(step_rel[h],step_rel[k])
-                    A[s,h,k] = l2_norm
-                    A[s,k,h] = l2_norm
+            step_rel = seq_rel[:,:,:,s]
+            for h in range(step_rel.shape[1]): 
+                A[:,s,h,h] = 1
+                for k in range(h+1,step_rel.shape[1]):
+                    l2_norm = self.anorm(step_rel[:,h],step_rel[:,k])
+                    A[:,s,h,k] = l2_norm
+                    A[:,s,k,h] = l2_norm
             if norm_lap_matr: 
-                G = nx.from_numpy_matrix(A[s,:,:])
-                A[s,:,:] = nx.normalized_laplacian_matrix(G).toarray()
-                
+                for i in range(len(A)):
+                    G = nx.from_numpy_matrix(A[i,s,:,:])
+                    A[i,s,:,:] = nx.normalized_laplacian_matrix(G).toarray()
+                    
         return torch.from_numpy(A).type(torch.float)
     
     def seq_to_nodes(self, seq_rel):
-        seq_len = seq_rel.shape[2]
-        max_nodes = seq_rel.shape[0]
-        node_feature_num = seq_rel.shape[1]
+        seq_len = seq_rel.shape[3]
+        max_nodes = seq_rel.shape[1]
+        node_feature_num = seq_rel.shape[2]
+        batch=seq_rel.shape[0]
         
-        V = np.zeros((seq_len,max_nodes,node_feature_num))
+        V = np.zeros((batch, seq_len,max_nodes,node_feature_num))
         for s in range(seq_len):
-            step_rel = seq_rel[:,:,s]
-            for h in range(len(step_rel)): 
-                V[s,h,:] = step_rel[h]
+            step_rel = seq_rel[:,:,:,s]
+            for h in range(step_rel.shape[1]): 
+                V[:,s,h,:] = step_rel[:,h]
                 
         return torch.from_numpy(V).type(torch.float)
 
