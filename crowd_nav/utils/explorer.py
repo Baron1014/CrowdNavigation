@@ -104,7 +104,7 @@ class Explorer(object):
             total_time = sum(success_times + collision_times + timeout_times)
             logging.info('Frequency of being in danger: %.2f and average min separate distance in danger: %.2f',
                          discomfort / total_time, average(min_dist))
-            if phase=='test' and self.weiter is not None:
+            if phase=='test' and self.writer is not None:
                 self.writer.summary(phase + '/frequency_in_danger', discomfort / total_time)
                 self.writer.summary(phase + '/avg_min_separate_dist', average(min_dist))
 
