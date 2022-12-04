@@ -4,7 +4,7 @@ import numpy as np
 import math
 import networkx as nx
 from crowd_nav.policy.helpers import mlp
-from crowd_nav.policy.model_predictive_rl import ModelPredictiveRL
+from crowd_nav.policy.multi_human_rl import MultiHumanRL
 from crowd_sim.envs.utils.action import ActionRot, ActionXY
 from crowd_sim.envs.utils.state import ObservableState, FullState
 from crowd_sim.envs.utils.robot import sliceable_deque
@@ -172,7 +172,7 @@ class social_stgcnn(nn.Module):
         for j in range(self.n_txpcnn):
             self.prelus.append(nn.PReLU())
 
-        self.value_network = mlp(config.gcn.X_dim, config.model_predictive_rl.value_network_dims)
+        self.value_network = mlp(config.gcn.X_dim, config.social_stgcnn.value_network_dims)
         self.w_r = mlp(robot_state_dim, config.gcn.wr_dims, last_relu=True)
         self.w_h = mlp(human_state_dim, config.gcn.wh_dims, last_relu=True)
 
@@ -205,13 +205,14 @@ class social_stgcnn(nn.Module):
         
         return value
 
-class SSTGCNN_RL(ModelPredictiveRL):
+class SSTGCNN_RL(MultiHumanRL):
     def __init__(self):
         super().__init__()
         self.name = 'SSTGCNN_RL'
         self.robot_state_dim = 9
         self.human_state_dim = 4
         self.norm_lap_matr = True
+        self.seq_len = 4
 
     def transform(self, state):
         """
@@ -227,20 +228,8 @@ class SSTGCNN_RL(ModelPredictiveRL):
         return robot_state_tensor, human_states_tensor
     
     def configure(self, config):
-        self.set_common_parameters(config)
-        self.planning_depth = config.model_predictive_rl.planning_depth
-        self.do_action_clip = config.model_predictive_rl.do_action_clip
-        if hasattr(config.model_predictive_rl, 'sparse_search'):
-            self.sparse_search = config.model_predictive_rl.sparse_search
-        self.planning_width = config.model_predictive_rl.planning_width
-        self.share_graph_model = config.model_predictive_rl.share_graph_model
-        self.linear_state_predictor = config.model_predictive_rl.linear_state_predictor
-        self.nodes = config.gcn.nodes
-        if hasattr(config.model_predictive_rl, 'with_lstm'):
-            self.with_lstm = config.model_predictive_rl.with_lstm
-
-        
-        # create edge
+        self.set_common_parameters(config) 
+        self.multiagent_training = config.social_stgcnn.multiagent_training
         self.model = social_stgcnn(config, self.robot_state_dim, self.human_state_dim)
     
     def predict(self, state, ego_memory_state):
@@ -270,9 +259,9 @@ class SSTGCNN_RL(ModelPredictiveRL):
             return ActionXY(0, 0) if self.kinematics == 'holonomic' else ActionRot(0, 0)
         if self.action_space is None:
             self.build_action_space(state.robot_state.v_pref)
-        # if not state.human_states:
-        #     assert self.phase != 'train'
-        #     return self.select_greedy_action(state.robot_state)
+        if not state.human_states:
+            assert self.phase != 'train'
+            return self.select_greedy_action(state.robot_state)
 
         probability = np.random.random()
         if self.phase == 'train' and probability < self.epsilon:
@@ -310,19 +299,18 @@ class SSTGCNN_RL(ModelPredictiveRL):
 
     def to_graph(self, state, next_state=None):
         robot_state, human_states = state
-        obs_len = len(robot_state) if isinstance(robot_state, sliceable_deque) else len(robot_state)+1
         # init robot
         if next_state is not None:
             all_next_self_state, all_next_human_states = next_state
             batch = len(all_next_self_state)
             all_history_self_state = [torch.cat([*robot_state], dim=0) for _ in range(batch)]
-            robot_seq_feature = torch.zeros((batch, 1, robot_state[0].shape[1], obs_len))
+            robot_seq_feature = torch.zeros((batch, 1, robot_state[0].shape[1], self.seq_len))
             next_robot_feature = torch.stack(all_next_self_state)
             curr_robot_seq = torch.cat((torch.stack(all_history_self_state), next_robot_feature), dim=1)
         else:
             batch = 1
             all_history_self_state = [torch.cat([*robot_state], dim=0) for _ in range(batch)]
-            robot_seq_feature = torch.zeros((batch, 1, robot_state[0].shape[1], obs_len))
+            robot_seq_feature = torch.zeros((batch, 1, robot_state[0].shape[1], self.seq_len))
             curr_robot_seq = torch.stack(all_history_self_state)
         curr_robot_seq = curr_robot_seq.unsqueeze(1)
         robot_seq_feature = curr_robot_seq.permute(0,1,3,2)
@@ -338,8 +326,8 @@ class SSTGCNN_RL(ModelPredictiveRL):
                 curr_seq_humans = torch.cat((curr_seq_humans, next_human_feature), dim=1)
             peds_in_curr_seq = torch.unique(curr_seq_humans[:, :, 0])
             curr_seq_rel = torch.zeros((batch, len(peds_in_curr_seq)+1, 2,
-                                            obs_len))
-            human_seq_feature = torch.zeros((batch, len(peds_in_curr_seq), human_states[-1].shape[1]-1, obs_len)) # remove human id
+                                            self.seq_len))
+            human_seq_feature = torch.zeros((batch, len(peds_in_curr_seq), human_states[-1].shape[1]-1, self.seq_len)) # remove human id
             for i, ped_id in enumerate([0]+peds_in_curr_seq.tolist()):
                 if ped_id == 0: # robot
                     curr_ped_seq = curr_robot_seq[:, :, :, :2].permute(0,1,3,2)
@@ -348,9 +336,9 @@ class SSTGCNN_RL(ModelPredictiveRL):
                     curr_ped_seq = curr_seq_humans[curr_seq_humans[:, :, 0] ==
                                                         ped_id, :].reshape(batch, -1, curr_seq_humans.shape[2])
                     # if observate lens is not enough just fill last state
-                    if curr_ped_seq.shape[1] != obs_len:
+                    if curr_ped_seq.shape[1] != self.seq_len:
                         last_ped_state = curr_ped_seq[:,-1:, :]
-                        fill_state_num = obs_len - curr_ped_seq.shape[1]
+                        fill_state_num = self.seq_len - curr_ped_seq.shape[1]
                         for _ in range(fill_state_num):
                             curr_ped_seq = torch.cat((curr_ped_seq, last_ped_state), dim=1)
                     human_seq_feature[:, i-1, :, :] = curr_ped_seq[:, :, 1:].permute(0,2,1) # remove human id

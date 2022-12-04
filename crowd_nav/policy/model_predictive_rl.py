@@ -298,7 +298,7 @@ class ModelPredictiveRL(Policy):
             returns.append(return_value)
             trajs.append([(state, action, reward_est)] + next_traj)
 
-        max_index = np.argmax(returns)
+        max_index = torch.argmax(torch.stack(returns)).item()
         max_return = returns[max_index]
         max_traj = trajs[max_index]
 
