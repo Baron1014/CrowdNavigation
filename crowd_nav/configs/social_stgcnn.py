@@ -15,6 +15,14 @@ class PolicyConfig(BasePolicyConfig):
         self.social_stgcnn = Config()
         self.social_stgcnn.value_network_dims = [32, 100, 100, 1]
         self.social_stgcnn.multiagent_training = True
+        self.social_stgcnn.n_stgcnn = 1
+        self.social_stgcnn.n_txpcnn = 1
+        self.social_stgcnn.stgcn_input_feat = self.gcn.X_dim
+        self.social_stgcnn.stgcn_output_feat = 32
+        self.social_stgcnn.seq_len = 4
+        self.social_stgcnn.kernel_size = 3
+        self.social_stgcnn.seq_hidden = 12
+        self.social_stgcnn.predict_seq_len = 1
         
 
 

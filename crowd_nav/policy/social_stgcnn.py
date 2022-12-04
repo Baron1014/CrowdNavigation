@@ -150,22 +150,27 @@ class st_gcn(nn.Module):
         return x, A
 
 class social_stgcnn(nn.Module):
-    def __init__(self, config, robot_state_dim, human_state_dim, n_stgcnn =1,n_txpcnn=1,input_feat=32,output_feat=32,
-                 seq_len=4,seq_hidden=12, pred_seq_len=1,kernel_size=3):
+    def __init__(self, config, robot_state_dim, human_state_dim):
         super(social_stgcnn,self).__init__()
-        self.n_stgcnn= n_stgcnn
-        self.n_txpcnn = n_txpcnn
-                
+        self.n_stgcnn= config.social_stgcnn.n_stgcnn
+        self.n_txpcnn = config.social_stgcnn.n_txpcnn
+        self.seq_len = config.social_stgcnn.seq_len
+        self.input_feat = config.social_stgcnn.stgcn_input_feat
+        self.output_feat = config.social_stgcnn.stgcn_output_feat
+        self.kernel_size = config.social_stgcnn.kernel_size
+        self.seq_hidden = config.social_stgcnn.seq_hidden
+        self.pred_seq_len = config.social_stgcnn.predict_seq_len
+
         self.st_gcns = nn.ModuleList()
-        self.st_gcns.append(st_gcn(input_feat,output_feat,(kernel_size,seq_len)))
+        self.st_gcns.append(st_gcn(self.input_feat, self.output_feat,(self.kernel_size,self.seq_len)))
         for j in range(1,self.n_stgcnn):
-            self.st_gcns.append(st_gcn(output_feat,output_feat,(kernel_size,seq_len)))
+            self.st_gcns.append(st_gcn(self.output_feat,self.output_feat,(self.kernel_size,self.seq_len)))
         
         self.tpcnns = nn.ModuleList()
-        self.tpcnns.append(nn.Conv2d(seq_len,seq_hidden,3,padding=1))
+        self.tpcnns.append(nn.Conv2d(self.seq_len,self.seq_hidden,3,padding=1))
         for j in range(1,self.n_txpcnn):
-            self.tpcnns.append(nn.Conv2d(seq_hidden,seq_hidden,3,padding=1))
-        self.tpcnn_ouput = nn.Conv2d(seq_hidden,pred_seq_len,3,padding=1)
+            self.tpcnns.append(nn.Conv2d(self.seq_hidden,self.seq_hidden,3,padding=1))
+        self.tpcnn_ouput = nn.Conv2d(self.seq_hidden,self.pred_seq_len,3,padding=1)
             
             
         self.prelus = nn.ModuleList()
@@ -181,14 +186,11 @@ class social_stgcnn(nn.Module):
     def forward(self,rv,hv,a):
         robot_state_embedings = self.w_r(rv)
         # if have humans just doing st_gcns
-        if a.shape[-1]!=0:
-            human_state_embedings = self.w_h(hv)
-            v = torch.cat([robot_state_embedings, human_state_embedings], dim=2)
-            v = v.permute(0,3,1,2)
-            for k in range(self.n_stgcnn):
-                v,a = self.st_gcns[k](v,a)
-        else:
-            v = robot_state_embedings.permute(0,3,1,2).contiguous()
+        human_state_embedings = self.w_h(hv)
+        v = torch.cat([robot_state_embedings, human_state_embedings], dim=2)
+        v = v.permute(0,3,1,2)
+        for k in range(self.n_stgcnn):
+            v,a = self.st_gcns[k](v,a)
             
         v = v.view(v.shape[0],v.shape[2],v.shape[1],v.shape[3])
         
@@ -260,7 +262,7 @@ class SSTGCNN_RL(MultiHumanRL):
         if self.action_space is None:
             self.build_action_space(state.robot_state.v_pref)
         if not state.human_states:
-            assert self.phase != 'train'
+            # assert self.phase != 'train'
             return self.select_greedy_action(state.robot_state)
 
         probability = np.random.random()
@@ -281,8 +283,6 @@ class SSTGCNN_RL(MultiHumanRL):
                     to(self.device)
 
                 # VALUE UPDATE
-                _next_self_state = self_states + [next_self_state]
-                _next_human_states = humans_states + [next_human_states]
                 all_action_self_states.append(next_self_state)
                 all_action_human_states.append(next_human_states)
                 rewards.append(reward)
