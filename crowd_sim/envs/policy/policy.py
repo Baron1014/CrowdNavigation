@@ -40,7 +40,7 @@ class Policy(object):
         torch.save(self.model.state_dict(), file)
 
     def load_model(self, file):
-        self.model.load_state_dict(torch.load(file))
+        self.model.load_state_dict(torch.load(file, map_location=self.device))
 
     def get_state_dict(self):
         return self.model.state_dict()

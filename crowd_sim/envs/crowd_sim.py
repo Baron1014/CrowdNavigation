@@ -226,7 +226,7 @@ class CrowdSim(gym.Env):
             # always to up
             py = np.random.uniform(-self.circle_radius-1, -self.circle_radius+1)
             gy = np.random.uniform(self.circle_radius-1, self.circle_radius+1)
-            if np.linalg.norm([px - gx, py - gy]) >= 10:
+            if np.linalg.norm([px - gx, py - gy]) >= 8:
                 break
         self.robot.set(px, py, gx, gy, 0, 0, np.pi/2)
         
@@ -252,12 +252,11 @@ class CrowdSim(gym.Env):
 
         # (px, py, gx, gy, vx, vy, theta)
         # self.robot.set(0, -self.circle_radius, 0, self.circle_radius, 0, 0, 0)
-        self.generate_robot()
         if self.case_counter[phase] >= 0:
             np.random.seed(base_seed[phase] + self.case_counter[phase])
             random.seed(base_seed[phase] + self.case_counter[phase])
-            if phase == 'test':
-                logging.info('current test seed is:{}'.format(base_seed[phase] + self.case_counter[phase]))
+            # if phase == 'test':
+            #     logging.info('current test seed is:{}'.format(base_seed[phase] + self.case_counter[phase]))
             if not self.robot.policy.multiagent_training and phase in ['train', 'val']:
                 # only CADRL trains in circle crossing simulation
                 human_num = 1
@@ -265,6 +264,7 @@ class CrowdSim(gym.Env):
             else:
                 self.current_scenario = self.test_scenario
                 human_num = self.human_num
+            self.generate_robot()
             self.generate_all_humans(human_num)
             
 
@@ -693,18 +693,16 @@ class CrowdSim(gym.Env):
                 human_numbers = [plt.text(humans[i].center[0] - x_offset, humans[i].center[1] + y_offset, str(i),
                                           color='black') for i in range(len(self.humans))]
             # disable showing FoV
-            if self.robot.FoV < np.pi * 2:
-                human_colors = []
-                for state in self.states:
-                    colors = []
-                    for h in range(len(humans)):
-                        # green: visible; red: invisible
-                        colors.append('g' if self.detect_visible(state[0], state[1][h]) else 'r')
-                    human_colors.append(colors)
+            human_colors = []
+            for state in self.states:
+                colors = []
+                for h in range(len(humans)):
+                    # green: visible; red: invisible
+                    colors.append('g' if self.detect_visible(state[0], state[1][h]) else 'r')
+                human_colors.append(colors)
 
             for i, human in enumerate(humans):
-                if self.robot.FoV < np.pi * 2:
-                    human.set_color(c=human_colors[0][i])
+                human.set_color(c=human_colors[0][i])
                 ax.add_artist(human)
                 if display_numbers:
                     ax.add_artist(human_numbers[i])
@@ -818,8 +816,7 @@ class CrowdSim(gym.Env):
 
                 for i, human in enumerate(humans):
                     human.center = human_positions[frame_num][i]
-                    if self.robot.FoV < np.pi * 2:
-                        human.set_color(c=human_colors[frame_num][i])
+                    human.set_color(c=human_colors[frame_num][i])
                     if display_numbers:
                         human_numbers[i].set_position((human.center[0] - x_offset, human.center[1] + y_offset))
 

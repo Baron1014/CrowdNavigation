@@ -12,7 +12,7 @@ class ValueEstimator(nn.Module):
         """ Embed state into a latent space. Take the first row of the feature matrix as state representation.
         """
         assert len(state[0].shape) == 3
-        assert len(state[1].shape) == 3
+        # assert len(state[1].shape) == 3
 
         # only use the feature of robot node as state representation
         state_embedding = self.graph_model(state)[:, 0, :]

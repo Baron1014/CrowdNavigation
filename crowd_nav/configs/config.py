@@ -31,7 +31,7 @@ class BaseEnvConfig(object):
     sim.train_val_scenario = 'circle_crossing'
     sim.test_scenario = 'circle_crossing'
     sim.square_width = 20
-    sim.circle_radius = 4
+    sim.circle_radius = 5
     sim.human_num = 5
     sim.nonstop_human = True
     sim.centralized_planning = True
@@ -50,7 +50,7 @@ class BaseEnvConfig(object):
     robot.obs_len = 4
     robot.v_pref = 1
     robot.sensor = 'coordinates'
-    robot.FOV = 0.7
+    robot.FOV = .7
 
     def __init__(self, debug=False):
         if debug:

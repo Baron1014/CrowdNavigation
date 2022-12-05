@@ -38,7 +38,8 @@ class WandbWriter:
             self.writer.log(info, step=step)
     
     def summary(self, key, value):
-        self.writer.run.summary[key] = value
+        if self.writer is not None:
+            self.writer.run.summary[key] = value
     
     def finish(self):
         if self.writer is not None:
@@ -239,6 +240,7 @@ def main(args):
         torch.save(best_val_model, os.path.join(args.output_dir, 'best_val.pth'))
         logging.info('Save the best val model with the reward: {}'.format(best_val_reward))
     explorer.run_k_episodes(env.case_size['test'], 'test', episode=episode, print_failure=True)
+    explorer.log('test', episode)
 
     writer.finish()
 

@@ -23,8 +23,7 @@ class StatePredictor(nn.Module):
         :return: tensor of shape (batch_size, # of agents, feature_size)
         """
         assert len(state[0].shape) == 3
-        assert len(state[1].shape) == 3
-
+            
         state_embedding = self.graph_model(state)
         if detach:
             state_embedding = state_embedding.detach()

@@ -86,6 +86,16 @@ def main(args):
     robot.set_fov(args.robot_fov)
     env.set_robot(robot)
     robot.time_step = env.time_step
+    if args.policy=='orca':
+        train_config = config.TrainConfig(args.debug)
+        if robot.visible:
+            safety_space = 0
+        else:
+            safety_space = train_config.imitation_learning.safety_space
+        il_policy = train_config.imitation_learning.il_policy
+        policy = policy_factory[il_policy]()
+        policy.multiagent_training = policy.multiagent_training
+        policy.safety_space = safety_space
     robot.set_policy(policy)
     explorer = Explorer(env, robot, device, None, gamma=0.9)
 
@@ -131,7 +141,7 @@ def main(args):
                     args.video_file = os.path.join(args.video_dir, policy_config.name + '_' + policy_config.gcn.similarity_function)
                 else:
                     args.video_file = os.path.join(args.video_dir, policy_config.name)
-                args.video_file = args.video_file + '_' + args.phase + '_' + str(args.test_case) + '.gif'
+                args.video_file = args.video_file + f'_fov{args.robot_fov}_' + args.phase + '_' + str(args.test_case) + '.gif'
             env.render('video', args.video_file, info)
         logging.info('It takes %.2f seconds to finish. Final status is %s, cumulative_reward is %f', env.global_time, info, cumulative_reward)
         if robot.visible and info == 'reach goal':
@@ -172,7 +182,7 @@ if __name__ == '__main__':
     parser.add_argument('-d', '--planning_depth', type=int, default=None)
     parser.add_argument('-w', '--planning_width', type=int, default=None)
     parser.add_argument('--sparse_search', default=False, action='store_true')
-    parser.add_argument('-fov', '--robot_fov', type=int, default=None)
+    parser.add_argument('-fov', '--robot_fov', type=float, default=None)
 
     sys_args = parser.parse_args()
 

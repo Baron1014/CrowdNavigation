@@ -29,6 +29,9 @@ class MultiHumanRL(CADRL):
             if hasattr(self, 'attention_weights'):
                 self.attention_weights = list()
             return self.select_greedy_action(state.robot_state)
+        if len(state.human_states)<2 and self.name=='OM-SARL':
+            assert self.phase != 'train'
+            return self.select_greedy_action(state.robot_state)
 
         occupancy_maps = None
         probability = np.random.random()
@@ -81,7 +84,7 @@ class MultiHumanRL(CADRL):
                                   for human_state in state.human_states], dim=0)
         rotated_state_tensor = self.rotate(state_tensor)
         if self.with_om:
-            occupancy_maps = self.build_occupancy_maps(state.human_states)
+            occupancy_maps = self.build_occupancy_maps(state.human_states).to(self.device)
             rotated_state_tensor = torch.cat([rotated_state_tensor, occupancy_maps], dim=1)
 
         return rotated_state_tensor
