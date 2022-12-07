@@ -10,6 +10,7 @@ from crowd_nav.utils.explorer import Explorer
 from crowd_nav.policy.policy_factory import policy_factory
 from crowd_sim.envs.utils.robot import Robot
 from crowd_sim.envs.policy.orca import ORCA
+from train import WandbWriter
 
 
 def main(args):
@@ -97,10 +98,10 @@ def main(args):
         policy.multiagent_training = policy.multiagent_training
         policy.safety_space = safety_space
     robot.set_policy(policy)
-    explorer = Explorer(env, robot, device, None, gamma=0.9)
-
     train_config = config.TrainConfig(args.debug)
     epsilon_end = train_config.train.epsilon_end
+    writer = WandbWriter(args, train_config)
+    explorer = Explorer(env, robot, device, writer, None, gamma=0.9)    
     if not isinstance(robot.policy, ORCA):
         robot.policy.set_epsilon(epsilon_end)
 
@@ -149,12 +150,14 @@ def main(args):
             logging.info('Average time for humans to reach goal: %.2f', sum(human_times) / len(human_times))
     else:
         explorer.run_k_episodes(env.case_size[args.phase], args.phase, print_failure=True)
+        explorer.log(f'test/FoV{int(args.robot_fov*180)}', 0)
         if args.plot_test_scenarios_hist:
             test_angle_seeds = np.array(env.test_scene_seeds)
             b = [i * 0.01 for i in range(101)]
             n, bins, patches = plt.hist(test_angle_seeds, b, facecolor='g')
             plt.savefig(os.path.join(args.model_dir, 'test_scene_hist.png'))
             plt.close()
+    writer.finish()
 
 
 if __name__ == '__main__':
@@ -183,6 +186,8 @@ if __name__ == '__main__':
     parser.add_argument('-w', '--planning_width', type=int, default=None)
     parser.add_argument('--sparse_search', default=False, action='store_true')
     parser.add_argument('-fov', '--robot_fov', type=float, default=None)
+    parser.add_argument('--wandb', default=False, action='store_true')
+    parser.add_argument('--wandb_display_name', '-wdn', type=str, default=None)
 
     sys_args = parser.parse_args()
 
