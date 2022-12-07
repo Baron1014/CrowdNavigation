@@ -50,6 +50,9 @@ class Robot(Agent):
         if self.FoV is not None:
             self.sensor = 'RGBD'
 
+    def get_fov_degree(self):
+        return int(self.FoV*180/np.pi)
+
 class sliceable_deque(deque):
     def __getitem__(self, index):
         if isinstance(index, slice):

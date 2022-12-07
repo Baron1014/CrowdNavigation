@@ -16,6 +16,8 @@ class Explorer(object):
         self.gamma = gamma
         self.target_policy = target_policy
         self.statistics = None
+        self.freq_in_danger = 0
+        self.min_seperate = 0
 
     # @profile
     def run_k_episodes(self, k, phase, update_memory=False, imitation_learning=False, episode=None, epoch=None,
@@ -102,12 +104,11 @@ class Explorer(object):
                                                        average(average_returns)))
         if phase in ['val', 'test']:
             total_time = sum(success_times + collision_times + timeout_times)
+            self.freq_in_danger = discomfort / total_time
+            self.min_seperate = average(min_dist)
             logging.info('Frequency of being in danger: %.2f and average min separate distance in danger: %.2f',
-                         discomfort / total_time, average(min_dist))
-            if phase=='test' and self.writer is not None:
-                self.writer.summary(phase + '/frequency_in_danger', discomfort / total_time)
-                self.writer.summary(phase + '/avg_min_separate_dist', average(min_dist))
-
+                         self.freq_in_danger, self.min_seperate)
+            
         if print_failure:
             logging.info('Collision cases: ' + ' '.join([str(x) for x in collision_cases]))
             logging.info('Timeout cases: ' + ' '.join([str(x) for x in timeout_cases]))
@@ -196,6 +197,10 @@ class Explorer(object):
         self.writer.log({tag_prefix + '/time': time}, step=global_step)
         self.writer.log({tag_prefix + '/reward': reward}, step=global_step)
         self.writer.log({tag_prefix + '/avg_return': avg_return}, step=global_step)
+        if 'test' in tag_prefix or 'val' in tag_prefix:
+            self.writer.log({tag_prefix + '/frequency_in_danger':self.freq_in_danger}, step=global_step)
+            self.writer.log({tag_prefix + '/avg_min_separate_dist':self.min_seperate}, step=global_step)
+
     
 
 
