@@ -12,26 +12,24 @@ class ValueEstimator(nn.Module):
         """ Embed state into a latent space. Take the first row of the feature matrix as state representation.
         """
         assert len(state[0].shape) == 3
-        assert len(state[1].shape) == 3
-
-        
-        state_embedding = self.graph_model(state)[:, 0, :]
+        # assert len(state[1].shape) == 3
 
         # only use the feature of robot node as state representation
+        state_embedding = self.graph_model(state)[:, 0, :]
         value = self.value_network(state_embedding)
         return value
 
-class GraphValueEstimator(ValueEstimator):
+class GraphValueEstimator(nn.Module):
     def __init__(self, config, graph_model):
-        super().__init__(config, graph_model)
+        super().__init__()
 
-    def forward(self, graph):
+    def forward(self, state):
         """ Embed state into a latent space. Take the first row of the feature matrix as state representation.
         """
-        
-        # torch geometric
-        state_embedding = self.graph_model(graph)
+        assert len(state[0].shape) == 3
+        assert len(state[1].shape) == 3
 
         # only use the feature of robot node as state representation
+        state_embedding = self.graph_model(state)
         value = self.value_network(state_embedding)
         return value

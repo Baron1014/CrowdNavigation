@@ -40,7 +40,7 @@ class Policy(object):
         torch.save(self.model.state_dict(), file)
 
     def load_model(self, file):
-        self.model.load_state_dict(torch.load(file))
+        self.model.load_state_dict(torch.load(file, map_location=self.device))
 
     def get_state_dict(self):
         return self.model.state_dict()
@@ -60,8 +60,6 @@ class Policy(object):
     def reach_destination(state):
         robot_state = state.robot_state
         if np.linalg.norm((robot_state.py - robot_state.gy, robot_state.px - robot_state.gx)) < robot_state.radius:
-        # goal_delta_x, goal_delta_y = robot_state.px - robot_state.gx, robot_state.py - robot_state.gy
-        # if abs(goal_delta_x) < robot_state.width/2 and abs(goal_delta_y) < robot_state.length/2:
             return True
         else:
             return False

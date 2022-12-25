@@ -10,6 +10,7 @@ from crowd_nav.utils.explorer import Explorer
 from crowd_nav.policy.policy_factory import policy_factory
 from crowd_sim.envs.utils.robot import Robot
 from crowd_sim.envs.policy.orca import ORCA
+from train import WandbWriter
 
 
 def main(args):
@@ -61,6 +62,7 @@ def main(args):
         policy_config.model_predictive_rl.sparse_search = True
 
     policy.configure(policy_config)
+    policy.set_device(device)
     if policy.trainable:
         if args.model_dir is None:
             parser.error('Trainable policy must be specified with a model weights directory')
@@ -78,19 +80,28 @@ def main(args):
         env.test_scenario = 'square_crossing'
     if args.circle:
         env.test_scenario = 'circle_crossing'
-    if args.social:
-        env.test_scenario = 'social_aware'
     if args.test_scenario is not None:
         env.test_scenario = args.test_scenario
 
     robot = Robot(env_config, 'robot')
+    robot.set_fov(args.robot_fov)
     env.set_robot(robot)
     robot.time_step = env.time_step
+    if args.policy=='orca':
+        train_config = config.TrainConfig(args.debug)
+        if robot.visible:
+            safety_space = 0
+        else:
+            safety_space = train_config.imitation_learning.safety_space
+        il_policy = train_config.imitation_learning.il_policy
+        policy = policy_factory[il_policy]()
+        policy.multiagent_training = policy.multiagent_training
+        policy.safety_space = safety_space
     robot.set_policy(policy)
-    explorer = Explorer(env, robot, device, None, gamma=0.9)
-
     train_config = config.TrainConfig(args.debug)
     epsilon_end = train_config.train.epsilon_end
+    writer = WandbWriter(args, train_config)
+    explorer = Explorer(env, robot, device, writer, None, gamma=0.9)    
     if not isinstance(robot.policy, ORCA):
         robot.policy.set_epsilon(epsilon_end)
 
@@ -131,20 +142,22 @@ def main(args):
                     args.video_file = os.path.join(args.video_dir, policy_config.name + '_' + policy_config.gcn.similarity_function)
                 else:
                     args.video_file = os.path.join(args.video_dir, policy_config.name)
-                args.video_file = args.video_file + '_' + args.phase + '_' + str(args.test_case) + '.gif'
-            env.render('video', args.video_file, info[0])
+                args.video_file = args.video_file + f'_fov{args.robot_fov}_' + args.phase + '_' + str(args.test_case) + '.gif'
+            env.render('video', args.video_file, info)
         logging.info('It takes %.2f seconds to finish. Final status is %s, cumulative_reward is %f', env.global_time, info, cumulative_reward)
         if robot.visible and info == 'reach goal':
             human_times = env.get_human_times()
             logging.info('Average time for humans to reach goal: %.2f', sum(human_times) / len(human_times))
     else:
         explorer.run_k_episodes(env.case_size[args.phase], args.phase, print_failure=True)
+        explorer.log(f'test/FoV{int(args.robot_fov*180)}', 0)
         if args.plot_test_scenarios_hist:
             test_angle_seeds = np.array(env.test_scene_seeds)
             b = [i * 0.01 for i in range(101)]
             n, bins, patches = plt.hist(test_angle_seeds, b, facecolor='g')
             plt.savefig(os.path.join(args.model_dir, 'test_scene_hist.png'))
             plt.close()
+    writer.finish()
 
 
 if __name__ == '__main__':
@@ -155,7 +168,7 @@ if __name__ == '__main__':
     parser.add_argument('--il', default=False, action='store_true')
     parser.add_argument('--rl', default=False, action='store_true')
     parser.add_argument('--gpu', default=False, action='store_true')
-    parser.add_argument('-v', '--visualize', default=True, action='store_true')
+    parser.add_argument('-v', '--visualize', default=False, action='store_true')
     parser.add_argument('--phase', type=str, default='test')
     parser.add_argument('-c', '--test_case', type=int, default=None)
     parser.add_argument('--square', default=False, action='store_true')
@@ -172,6 +185,9 @@ if __name__ == '__main__':
     parser.add_argument('-d', '--planning_depth', type=int, default=None)
     parser.add_argument('-w', '--planning_width', type=int, default=None)
     parser.add_argument('--sparse_search', default=False, action='store_true')
+    parser.add_argument('-fov', '--robot_fov', type=float, default=None)
+    parser.add_argument('--wandb', default=False, action='store_true')
+    parser.add_argument('--wandb_display_name', '-wdn', type=str, default=None)
 
     sys_args = parser.parse_args()
 

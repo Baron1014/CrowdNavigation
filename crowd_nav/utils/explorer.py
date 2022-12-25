@@ -16,6 +16,8 @@ class Explorer(object):
         self.gamma = gamma
         self.target_policy = target_policy
         self.statistics = None
+        self.freq_in_danger = 0
+        self.min_seperate = 0
 
     # @profile
     def run_k_episodes(self, k, phase, update_memory=False, imitation_learning=False, episode=None, epoch=None,
@@ -28,7 +30,6 @@ class Explorer(object):
         collision = 0
         timeout = 0
         discomfort = 0
-        interrupt = 0
         min_dist = []
         cumulative_rewards = []
         average_returns = []
@@ -52,12 +53,7 @@ class Explorer(object):
                 states.append(self.robot.policy.last_state)
                 actions.append(action)
                 rewards.append(reward)
-                
-                if len(info)==2:
-                    if isinstance(info[-1], Interrupt):
-                        interrupt+=1
-                
-                info=info[0]
+
                 if isinstance(info, Discomfort):
                     discomfort += 1
                     min_dist.append(info.min_dist)
@@ -108,19 +104,11 @@ class Explorer(object):
                                                        average(average_returns)))
         if phase in ['val', 'test']:
             total_time = sum(success_times + collision_times + timeout_times)
+            self.freq_in_danger = discomfort / total_time
+            self.min_seperate = average(min_dist)
             logging.info('Frequency of being in danger: %.2f and average min separate distance in danger: %.2f',
-                         discomfort / total_time, average(min_dist))
-            logging.info("Interrupt human interaction: {:.2f}".format(interrupt/total_time))
-            if self.writer and phase=='test':
-                self.writer.run.summary[phase + '/success_rate'] = success_rate
-                self.writer.run.summary[phase + '/collision_rate'] = collision_rate
-                self.writer.run.summary[phase + '/time'] = avg_nav_time
-                self.writer.run.summary[phase + '/reward'] = average(cumulative_rewards)
-                self.writer.run.summary[phase + '/avg_return'] =  average(average_returns)
-                self.writer.run.summary[phase + '/frequency_in_danger'] =  discomfort / total_time
-                self.writer.run.summary[phase + '/avg_min_separate_dist'] =  average(min_dist)
-
-
+                         self.freq_in_danger, self.min_seperate)
+            
         if print_failure:
             logging.info('Collision cases: ' + ' '.join([str(x) for x in collision_cases]))
             logging.info('Timeout cases: ' + ' '.join([str(x) for x in timeout_cases]))
@@ -152,8 +140,6 @@ class Explorer(object):
                     value = 0
             value = torch.Tensor([value]).to(self.device)
             reward = torch.Tensor([rewards[i]]).to(self.device)
-            # state = state.to(self.device)
-            # next_state = next_state.to(self.device)
 
             if self.target_policy.name == 'ModelPredictiveRL' or self.target_policy.name == 'SSTGCNN_RL':
                 self.memory.push((state[0], state[1], value, reward, next_state[0], next_state[1]))
@@ -167,6 +153,7 @@ class Explorer(object):
             raise ValueError('Memory or gamma value is not set!')
         
         graphs, adj_matrixs = [], []
+        self.robot.clean_ego_memory()
         for i, state in enumerate(states):
             # VALUE UPDATE
             if imitation_learning:
@@ -180,7 +167,9 @@ class Explorer(object):
                 graphs.append(graph)
                 adj_matrixs.append(adj)
 
-        for i, graph in enumerate(graphs[:-1]):
+        for i in range(self.robot.obs_len-1, len(states[:-1])):
+            g_idx = i-(self.robot.obs_len-1)
+            graph = graphs[g_idx]
             reward = rewards[i]
             if imitation_learning:
                 value = sum([pow(self.gamma, (t - i) * self.robot.time_step * self.robot.v_pref) * reward *
@@ -193,8 +182,11 @@ class Explorer(object):
                     value = 0
             value = torch.Tensor([value]).to(self.device)
             reward = torch.Tensor([rewards[i]]).to(self.device)
-
-            self.memory.push((graph[0], graph[1], adj_matrixs[i], value, reward, graphs[i+1][0], graphs[i+1][1], adj_matrixs[i+1]))
+            current_human_num = 0 if len(graph[1])==0 else graph[1].shape[2]
+            next_human_num = 0 if len(graphs[g_idx+1][1])==0 else graphs[g_idx+1][1].shape[2]
+            if current_human_num == next_human_num:
+                # only push human number of current state equal to next state
+                self.memory.push((graph[0], graph[1], adj_matrixs[g_idx], value, reward, graphs[g_idx+1][0], graphs[g_idx+1][1], adj_matrixs[g_idx+1]))
     
 
 
@@ -205,6 +197,10 @@ class Explorer(object):
         self.writer.log({tag_prefix + '/time': time}, step=global_step)
         self.writer.log({tag_prefix + '/reward': reward}, step=global_step)
         self.writer.log({tag_prefix + '/avg_return': avg_return}, step=global_step)
+        if 'test' in tag_prefix or 'val' in tag_prefix:
+            self.writer.log({tag_prefix + '/frequency_in_danger':self.freq_in_danger}, step=global_step)
+            self.writer.log({tag_prefix + '/avg_min_separate_dist':self.min_seperate}, step=global_step)
+
     
 
 

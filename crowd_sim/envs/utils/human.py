@@ -1,14 +1,10 @@
 from crowd_sim.envs.utils.agent import Agent
-from crowd_sim.envs.utils.state import HumanState, JointState
-from crowd_sim.envs.utils.robot import Robot
+from crowd_sim.envs.utils.state import JointState, ObservableState
 
 class Human(Agent):
     def __init__(self, _id, config, section, static=False):
         super().__init__(config, section)
         self.id = _id
-        self.interaction = None
-        self.static = static
-        self.radius = getattr(config, section).radius
 
     def act(self, ob):
         """
@@ -19,3 +15,6 @@ class Human(Agent):
         state = JointState(self.get_full_state(), ob)
         action = self.policy.predict(state)
         return action
+
+    def get_id_observable_state(self):
+        return ObservableState(self.px, self.py, self.vx, self.vy, self.radius, self.id)

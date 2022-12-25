@@ -31,7 +31,6 @@ class MPRLTrainer(object):
         self.share_graph_model = share_graph_model
         self.v_optimizer = None
         self.s_optimizer = None
-        self.graph_edge = policy.get_edge()
 
         # for value update
         self.gamma = 0.9
@@ -101,9 +100,8 @@ class MPRLTrainer(object):
                     update_counter += 1
 
             logging.debug('{}-th epoch ends'.format(epoch))
-            if self.writer != None:
-                self.writer.log({'IL/epoch_v_loss': epoch_v_loss / len(self.memory)}, step=epoch)
-                self.writer.log({'IL/epoch_s_loss': epoch_s_loss / len(self.memory)}, step=epoch)
+            self.writer.log({'IL/epoch_v_loss': epoch_v_loss / len(self.memory)}, step=epoch)
+            self.writer.log({'IL/epoch_s_loss': epoch_s_loss / len(self.memory)}, step=epoch)
             logging.info('Average loss in epoch %d: value loss=%.2E, graph loss=%.2E', epoch, epoch_v_loss / len(self.memory),
                          epoch_s_loss / len(self.memory))
 
@@ -157,9 +155,8 @@ class MPRLTrainer(object):
         average_v_loss = v_losses / num_batches
         average_s_loss = s_losses / num_batches
         logging.info('Average loss : %.2E, %.2E', average_v_loss, average_s_loss)
-        if self.writer != None:
-            self.writer.log({'RL/average_v_loss': average_v_loss}, step=episode)
-            self.writer.log({'RL/average_s_loss': average_s_loss}, step=episode)
+        self.writer.log({'RL/average_v_loss': average_v_loss}, step=episode)
+        self.writer.log({'RL/average_s_loss': average_s_loss}, step=episode)
 
         return average_v_loss, average_s_loss
 
@@ -220,8 +217,7 @@ class VNRLTrainer(object):
                 epoch_loss += loss.data.item()
             logging.debug('{}-th epoch ends'.format(epoch))
             average_epoch_loss = epoch_loss / len(self.memory)
-            if self.writer != None:
-                self.writer.log({'IL/epoch_v_loss': average_epoch_loss}, step=epoch)
+            self.writer.log({'IL/epoch_v_loss': average_epoch_loss}, step=epoch)
             logging.info('Average loss in epoch %d: %.2E', epoch, average_epoch_loss)
 
         return average_epoch_loss
@@ -251,8 +247,7 @@ class VNRLTrainer(object):
 
         average_loss = losses / num_batches
         logging.info('Average loss : %.2E', average_loss)
-        if self.writer != None:
-            self.writer.log({'RL/average_v_loss': average_loss}, step=episode)
+        self.writer.log({'RL/average_v_loss': average_loss}, step=episode)
 
         return average_loss
 
@@ -283,8 +278,7 @@ class GRAPHTrainer(VNRLTrainer):
                 epoch_loss += loss.data.item()
             logging.debug('{}-th epoch ends'.format(epoch))
             average_epoch_loss = epoch_loss / len(self.memory)
-            if self.writer != None:
-                self.writer.log({'IL/epoch_v_loss': average_epoch_loss}, step=epoch)
+            self.writer.log({'IL/epoch_v_loss': average_epoch_loss}, step=epoch)
             logging.info('Average loss in epoch %d: %.2E', epoch, average_epoch_loss)
 
         return average_epoch_loss
@@ -316,8 +310,7 @@ class GRAPHTrainer(VNRLTrainer):
 
         average_loss = losses / num_batches
         logging.info('Average loss : %.2E', average_loss)
-        if self.writer != None:
-            self.writer.log({'RL/average_v_loss': average_loss}, step=episode)
+        self.writer.log({'RL/average_v_loss': average_loss}, step=episode)
 
         return average_loss
 
@@ -329,7 +322,7 @@ class TGRLTrainer(GRAPHTrainer):
         if self.optimizer is None:
             raise ValueError('Learning rate is not set!')
         if self.data_loader is None:
-            self.data_loader = DataLoader(self.memory, self.batch_size, shuffle=True)
+            self.data_loader = DataLoader(self.memory, self.batch_size, shuffle=True, collate_fn=temporal_graph_batch)
             # self.data_loader = TemporalDataLoader(self.memory.get_graph_memory(), self.batch_size)
         
         average_epoch_loss = 0
@@ -337,18 +330,19 @@ class TGRLTrainer(GRAPHTrainer):
             epoch_loss = 0
             logging.debug('{}-th epoch starts'.format(epoch))
             for data in self.data_loader:
-                r_graph, hs_graph, adj_matrix, values, _, _, _, _ = data
-                self.optimizer.zero_grad()
-                outputs = self.model(r_graph, hs_graph, adj_matrix.squeeze())
-                values = values.to(self.device)
-                loss = self.criterion(outputs, values)
-                loss.backward()
-                self.optimizer.step()
-                epoch_loss += loss.data.item()
+                for unique_h in data:
+                    mini_data = self.get_mini_batch(data, unique_h)
+                    r_graph, hs_graph, adj_matrix, values, _, _, _, _ = mini_data
+                    self.optimizer.zero_grad()
+                    outputs = self.model(r_graph.squeeze(1), hs_graph.squeeze(1), adj_matrix.squeeze(1))
+                    values = values.to(self.device)
+                    loss = self.criterion(outputs, values)
+                    loss.backward()
+                    self.optimizer.step()
+                    epoch_loss += loss.data.item()
             logging.debug('{}-th epoch ends'.format(epoch))
             average_epoch_loss = epoch_loss / len(self.memory)
-            if self.writer != None:
-                self.writer.log({'IL/epoch_v_loss': average_epoch_loss}, step=epoch)
+            self.writer.log({'IL/epoch_v_loss': average_epoch_loss}, step=epoch)
             logging.info('Average loss in epoch %d: %.2E', epoch, average_epoch_loss)
 
         return average_epoch_loss
@@ -358,32 +352,39 @@ class TGRLTrainer(GRAPHTrainer):
             raise ValueError('Learning rate is not set!')
         if self.data_loader is None:
             # self.data_loader = DataLoader(self.memory, self.batch_size, shuffle=True, collate_fn=pad_batch)
-            self.data_loader = DataLoader(self.memory, self.batch_size, shuffle=True)
+            self.data_loader = DataLoader(self.memory, self.batch_size, shuffle=True, collate_fn=temporal_graph_batch)
 
         losses = 0
         batch_count = 0
         for data in self.data_loader:
-            r_graph, hs_graph, adj_matrix, _, rewards, next_r_graph, next_hs_graph, next_adj_matrix = data
-            self.optimizer.zero_grad()
-            outputs = self.model(r_graph, hs_graph, adj_matrix.squeeze()).unsqueeze(0)
+            for unique_h in data:
+                mini_data = self.get_mini_batch(data, unique_h)
+                r_graph, hs_graph, adj_matrix, _, rewards, next_r_graph, next_hs_graph, next_adj_matrix = mini_data
+                self.optimizer.zero_grad()
+                outputs = self.model(r_graph.squeeze(1), hs_graph.squeeze(1), adj_matrix.squeeze(1))
 
-            gamma_bar = pow(self.gamma, self.time_step * self.v_pref)
-            target_values = rewards + gamma_bar * self.target_model(next_r_graph, next_hs_graph, next_adj_matrix.squeeze())
+                gamma_bar = pow(self.gamma, self.time_step * self.v_pref)
+                target_values = rewards + gamma_bar * self.target_model(next_r_graph.squeeze(1), next_hs_graph.squeeze(1), next_adj_matrix.squeeze(1))
 
-            loss = self.criterion(outputs, target_values)
-            loss.backward()
-            self.optimizer.step()
-            losses += loss.data.item()
-            batch_count += 1
-            if batch_count > num_batches:
-                break
+                loss = self.criterion(outputs.squeeze(), target_values.squeeze())
+                loss.backward()
+                self.optimizer.step()
+                losses += loss.data.item()
+                batch_count += 1
+                if batch_count > num_batches:
+                    break
 
         average_loss = losses / num_batches
         logging.info('Average loss : %.2E', average_loss)
-        if self.writer != None:
-            self.writer.log({'RL/average_v_loss': average_loss}, step=episode)
+        self.writer.log({'RL/average_v_loss': average_loss}, step=episode)
 
         return average_loss
+    
+    def get_mini_batch(self, batch, human_num):
+        mini_batch = []
+        for key in batch[human_num]:
+            mini_batch.append(torch.stack(batch[human_num][key]))
+        return mini_batch
 
 def pad_batch(batch):
     """
@@ -415,3 +416,19 @@ def graph_batch(batch, device):
         next_graph.append(data[3].to(device))
     
     return graphs, torch.stack(values), torch.stack(rewards), next_graph
+
+def temporal_graph_batch(batch):
+    mini_batch = {}
+    for data in batch:
+        _, hs_graph, _, _,  _, _, _, _ = data
+        hum_num = 0 if len(hs_graph)==0 else hs_graph.shape[2]
+        if hum_num not in mini_batch:
+            mini_batch[hum_num] = {
+                'r_graph': [], 'hs_graph': [], 'adj_matrix': [],
+                'values': [], 'reward':[],
+                'next_r_graph': [], 'next_hs_graph':[], 'next_adj_matrix':[]
+            }
+        for i, key in enumerate(mini_batch[hum_num]):
+            mini_batch[hum_num][key].append(data[i])
+    
+    return mini_batch

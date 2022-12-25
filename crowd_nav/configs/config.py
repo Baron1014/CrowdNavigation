@@ -30,10 +30,8 @@ class BaseEnvConfig(object):
     sim = Config()
     sim.train_val_scenario = 'circle_crossing'
     sim.test_scenario = 'circle_crossing'
-    # sim.train_val_scenario = 'social_aware'
-    # sim.test_scenario = 'social_aware'
     sim.square_width = 20
-    sim.circle_radius = 4
+    sim.circle_radius = 5
     sim.human_num = 5
     sim.nonstop_human = True
     sim.centralized_planning = True
@@ -50,15 +48,9 @@ class BaseEnvConfig(object):
     robot.policy = 'none'
     robot.radius = 0.3
     robot.obs_len = 4
-    if robot.radius is None:
-        robot.width = 0.5
-        robot.length = 0.8
-    else:
-        robot.width = None
-        robot.length = None
     robot.v_pref = 1
     robot.sensor = 'coordinates'
-    robot.FOV = 0.7
+    robot.FOV = .7
 
     def __init__(self, debug=False):
         if debug:
@@ -77,7 +69,6 @@ class BasePolicyConfig(object):
 
     action_space = Config()
     action_space.kinematics = 'holonomic'
-    # action_space.kinematics = 'unicycle'
     action_space.speed_samples = 5
     action_space.rotation_samples = 16
     action_space.sampling = 'exponential'

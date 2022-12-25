@@ -5,7 +5,6 @@ from crowd_sim.envs.utils.action import ActionRot, ActionXY
 from crowd_nav.policy.cadrl import CADRL
 
 
-
 class MultiHumanRL(CADRL):
     def __init__(self):
         super().__init__()
@@ -29,6 +28,9 @@ class MultiHumanRL(CADRL):
             assert self.phase != 'train'
             if hasattr(self, 'attention_weights'):
                 self.attention_weights = list()
+            return self.select_greedy_action(state.robot_state)
+        if len(state.human_states)<2 and self.name=='OM-SARL':
+            assert self.phase != 'train'
             return self.select_greedy_action(state.robot_state)
 
         occupancy_maps = None
@@ -78,11 +80,11 @@ class MultiHumanRL(CADRL):
         :param state:
         :return: tensor of shape (# of humans, len(state))
         """
-        state_tensor = torch.cat([torch.Tensor([state.robot_state + human_state])
+        state_tensor = torch.cat([torch.Tensor([state.robot_state + human_state]).to(self.device)
                                   for human_state in state.human_states], dim=0)
         rotated_state_tensor = self.rotate(state_tensor)
         if self.with_om:
-            occupancy_maps = self.build_occupancy_maps(state.human_states)
+            occupancy_maps = self.build_occupancy_maps(state.human_states).to(self.device)
             rotated_state_tensor = torch.cat([rotated_state_tensor, occupancy_maps], dim=1)
 
         return rotated_state_tensor

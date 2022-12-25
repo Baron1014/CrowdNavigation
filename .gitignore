@@ -14,3 +14,15 @@ env/
 crowd_nav/sarl_output/__pycache__/
 
 ros/detection/__pycache__/
+
+RGL_output_gpu/
+
+cadrl_output/
+
+sarl_output/
+
+crowd_nav/vistualize/baseline/
+
+crowd_nav/vistualize/rgl_vs_sstgcnn/
+
+sstgcnn_output/

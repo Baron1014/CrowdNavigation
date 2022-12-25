@@ -6,6 +6,7 @@ from torch.nn.functional import softmax, relu
 from torch.nn import Parameter
 from crowd_nav.policy.helpers import mlp
 
+
 class RGL(nn.Module):
     def __init__(self, config, robot_state_dim, human_state_dim):
         """ The current code might not be compatible with models trained with previous version
@@ -106,6 +107,7 @@ class RGL(nn.Module):
 
         # compute feature matrix X
         robot_state_embedings = self.w_r(robot_state)
+
         human_state_embedings = self.w_h(human_states)
         X = torch.cat([robot_state_embedings, human_state_embedings], dim=1)
 
@@ -128,46 +130,6 @@ class RGL(nn.Module):
 
         return next_H
 
-class SSTGCN(RGL):
-    def __init__(self, config, robot_state_dim, human_state_dim):
-        super().__init__(config, robot_state_dim, human_state_dim)
-        embedding_dim = self.X_dim
-        self.lstm = nn.LSTM(embedding_dim, embedding_dim)
-
-    def forward(self, state):
-        """
-        Embed current state tensor pair (robot_state, human_states) into a latent space
-        Each tensor is of shape (batch_size, # of agent, features)
-        :param state:
-        :return:
-        """
-        robot_state, human_states = state
-
-        # compute feature matrix X
-        robot_state_embedings = self.w_r(robot_state)
-        human_state_embedings = self.w_h(human_states)
-        X = torch.cat([robot_state_embedings, human_state_embedings], dim=1)
-
-        # compute matrix A
-        if not self.layerwise_graph:
-            normalized_A = self.compute_similarity_matrix(X)
-            self.A = normalized_A[0, :, :].data.cpu().numpy()
-
-        next_H = H = X
-        for i in range(self.num_layer):
-            if self.layerwise_graph:
-                A = self.compute_similarity_matrix(H)
-                next_H = relu(torch.matmul(torch.matmul(A, H), self.Ws[i]))
-            else:
-                next_H = relu(torch.matmul(torch.matmul(normalized_A, H), self.Ws[i]))
-
-            if self.skip_connection:
-                next_H = next_H.clone() + H
-            H = next_H
-        
-        out, h = self.lstm(next_H.permute(1,0,2))
-
-        return out.permute(1,0,2)
 
 # class RGL(nn.Module):
 #     def __init__(self, config, robot_state_dim, human_state_dim):

@@ -24,15 +24,33 @@ def set_random_seeds(seed):
     torch.cuda.manual_seed_all(seed)
     return None
 
+class WandbWriter:
+    def __init__(self, args, config):
+        self.use_writer = args.wandb
+        if self.use_writer:
+            wandb.init(project=config.wan.project, entity=config.wan.entity, config=args, name=args.wandb_display_name)
+            self.writer = wandb
+        else:
+            self.writer = None
+        
+    def log(self, info, step):
+        if self.writer is not None:
+            self.writer.log(info, step=step)
+    
+    def summary(self, key, value):
+        if self.writer is not None:
+            self.writer.run.summary[key] = value
+    
+    def finish(self):
+        if self.writer is not None:
+            wandb.finish()
+    
 
 def main(args):
     set_random_seeds(args.randomseed)
     # configure paths
-    writer = None
     train_cg = global_config.BaseTrainConfig()
-    if args.wandb:
-        wandb.init(project=train_cg.wan.project, entity=train_cg.wan.entity, config=args, name=args.wandb_display_name)
-        writer = wandb
+    writer = WandbWriter(args, train_cg)
 
     make_new_dir = True
     if os.path.exists(args.output_dir):
@@ -148,8 +166,10 @@ def main(args):
         il_policy = policy_factory[il_policy]()
         il_policy.multiagent_training = policy.multiagent_training
         il_policy.safety_space = safety_space
+        robot.set_fov(2) # for imitation learning of target policy use fov
         robot.set_policy(il_policy)
         explorer.run_k_episodes(il_episodes, 'train', update_memory=True, imitation_learning=True)
+        explorer.log('IL', global_step=0)
         trainer.optimize_epoch(il_epochs)
         policy.save_model(il_weight_file)
         logging.info('Finish imitation learning. Weights saved.')
@@ -160,6 +180,7 @@ def main(args):
     # reinforcement learning
     policy.set_env(env)
     robot.set_policy(policy)
+    robot.set_fov(env_config.robot.FOV)
     robot.print_info()
     trainer.set_learning_rate(rl_learning_rate)
     # fill the memory pool with some RL experience
@@ -175,8 +196,7 @@ def main(args):
     if episode % evaluation_interval == 0:
         logging.info('Evaluate the model instantly after imitation learning on the validation cases')
         explorer.run_k_episodes(env.case_size['val'], 'val', episode=episode)
-        if writer!=None:
-            explorer.log('val', episode)
+        explorer.log('val', episode)
 
     episode = 0
     while episode < train_episodes:
@@ -191,8 +211,7 @@ def main(args):
 
         # sample k episodes into memory and optimize over the generated memory
         explorer.run_k_episodes(sample_episodes, 'train', update_memory=True, episode=episode)
-        if writer!=None:
-            explorer.log('train', episode)
+        explorer.log('train', episode)
 
         trainer.optimize_batch(train_batches, episode)
         episode += 1
@@ -202,8 +221,7 @@ def main(args):
         # evaluate the model
         if episode % evaluation_interval == 0:
             _, _, _, reward, _ = explorer.run_k_episodes(env.case_size['val'], 'val', episode=episode)
-            if writer!=None:
-                explorer.log('val', episode)
+            explorer.log('val', episode)
 
             if episode % checkpoint_interval == 0 and reward > best_val_reward:
                 best_val_reward = reward
@@ -219,12 +237,12 @@ def main(args):
     # # test with the best val model
     if best_val_model is not None:
         policy.load_state_dict(best_val_model)
-        # torch.save(best_val_model, os.path.join(args.output_dir, 'best_val.pth'))
-        # logging.info('Save the best val model with the reward: {}'.format(best_val_reward))
+        torch.save(best_val_model, os.path.join(args.output_dir, 'best_val.pth'))
+        logging.info('Save the best val model with the reward: {}'.format(best_val_reward))
     explorer.run_k_episodes(env.case_size['test'], 'test', episode=episode, print_failure=True)
+    explorer.log(f'test/FoV{robot.get_fov_degree()}', episode)
 
-    if args.wandb:
-        wandb.finish()
+    writer.finish()
 
 
 if __name__ == '__main__':
