@@ -221,14 +221,16 @@ class CrowdSim(gym.Env):
         return human
 
     def generate_robot(self):
-        while True:
-            px, gx = np.random.uniform(-self.circle_radius, self.circle_radius, 2)
+       # while True:
+       #     px, gx = np.random.uniform(-self.circle_radius, self.circle_radius, 2)
             # always to up
-            py = np.random.uniform(-self.circle_radius-1, -self.circle_radius+1)
-            gy = np.random.uniform(self.circle_radius-1, self.circle_radius+1)
-            if np.linalg.norm([px - gx, py - gy]) >= 8:
-                break
-        self.robot.set(px, py, gx, gy, 0, 0, np.pi/2)
+       #     py = np.random.uniform(-self.circle_radius-1, -self.circle_radius+1)
+       #     gy = np.random.uniform(self.circle_radius-1, self.circle_radius+1)
+       #     if np.linalg.norm([px - gx, py - gy]) >= 8:
+       #         break
+       px, gx = 0, 0
+       py, gy = -self.circle_radius-1, self.circle_radius+1
+       self.robot.set(px, py, gx, gy, 0, 0, np.pi/2)
         
 
     def reset(self, phase='test', test_case=None):
