@@ -221,14 +221,16 @@ class CrowdSim(gym.Env):
         return human
 
     def generate_robot(self):
-        while True:
-            px, gx = np.random.uniform(-self.circle_radius, self.circle_radius, 2)
+       # while True:
+       #     px, gx = np.random.uniform(-self.circle_radius, self.circle_radius, 2)
             # always to up
-            py = np.random.uniform(-self.circle_radius-1, -self.circle_radius+1)
-            gy = np.random.uniform(self.circle_radius-1, self.circle_radius+1)
-            if np.linalg.norm([px - gx, py - gy]) >= 8:
-                break
-        self.robot.set(px, py, gx, gy, 0, 0, np.pi/2)
+       #     py = np.random.uniform(-self.circle_radius-1, -self.circle_radius+1)
+       #     gy = np.random.uniform(self.circle_radius-1, self.circle_radius+1)
+       #     if np.linalg.norm([px - gx, py - gy]) >= 8:
+       #         break
+       px, gx = 0, 0
+       py, gy = -self.circle_radius-1, self.circle_radius+1
+       self.robot.set(px, py, gx, gy, 0, 0, np.pi/2)
         
 
     def reset(self, phase='test', test_case=None):
@@ -648,8 +650,8 @@ class CrowdSim(gym.Env):
         elif mode == 'video':
             fig, ax = plt.subplots(figsize=(7, 7))
             ax.tick_params(labelsize=12)
-            ax.set_xlim(-11, 11)
-            ax.set_ylim(-11, 11)
+            ax.set_xlim(-9, 9)
+            ax.set_ylim(-9, 9)
             ax.set_xlabel('x(m)', fontsize=14)
             ax.set_ylabel('y(m)', fontsize=14)
             show_human_start_goal = False

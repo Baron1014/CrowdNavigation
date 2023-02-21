@@ -26,3 +26,11 @@ crowd_nav/vistualize/baseline/
 crowd_nav/vistualize/rgl_vs_sstgcnn/
 
 sstgcnn_output/
+
+crowd_nav/.ipynb_checkpoints/
+
+orienv/cadrl/
+
+orienv/
+
+crowd_nav/vistualize/

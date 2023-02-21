@@ -1,8 +1,8 @@
 #!/bin/bash
 
-name='test/social_stgcnn_fov360'
-fov=.7 
+name='test/sstgcnn_fov234_orienv_human'
 for f in $*
 do
-	python3 test.py -fov $fov --wandb -wdn $name --gpu --human_num $f
+	python3 test.py -fov $f --wandb -wdn $name --gpu --human_num 8
+	python3 test.py -fov $f --wandb -wdn $name --gpu --human_num 10
 done

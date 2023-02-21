@@ -120,12 +120,14 @@ def main(args):
 
     if args.visualize:
         rewards = []
+        actions =[]
         ob = env.reset(args.phase, args.test_case)
         done = False
         last_pos = np.array(robot.get_position())
         while not done:
             action = robot.act(ob)
             ob, _, done, info = env.step(action)
+            actions.append(action)
             rewards.append(_)
             current_pos = np.array(robot.get_position())
             logging.debug('Speed: %.2f', np.linalg.norm(current_pos - last_pos) / robot.time_step)
