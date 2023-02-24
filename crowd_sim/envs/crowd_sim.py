@@ -221,14 +221,16 @@ class CrowdSim(gym.Env):
         return human
 
     def generate_robot(self):
-        while True:
-            px, gx = np.random.uniform(-self.circle_radius, self.circle_radius, 2)
+       # while True:
+       #     px, gx = np.random.uniform(-self.circle_radius, self.circle_radius, 2)
             # always to up
-            py = np.random.uniform(-self.circle_radius-1, -self.circle_radius+1)
-            gy = np.random.uniform(self.circle_radius-1, self.circle_radius+1)
-            if np.linalg.norm([px - gx, py - gy]) >= 8:
-                break
-        self.robot.set(px, py, gx, gy, 0, 0, np.pi/2)
+       #     py = np.random.uniform(-self.circle_radius-1, -self.circle_radius+1)
+       #     gy = np.random.uniform(self.circle_radius-1, self.circle_radius+1)
+       #     if np.linalg.norm([px - gx, py - gy]) >= 8:
+       #         break
+       px, gx = 0, 0
+       py, gy = -self.circle_radius-1, self.circle_radius+1
+       self.robot.set(px, py, gx, gy, 0, 0, np.pi/2)
         
 
     def reset(self, phase='test', test_case=None):
@@ -582,7 +584,7 @@ class CrowdSim(gym.Env):
         frame = 0
         x_offset = 0.2
         y_offset = 0.4
-        cmap = plt.cm.get_cmap('hsv', 10)
+        cmap = plt.cm.get_cmap('Pastel1', 10)
         robot_color = 'black'
         # human_color = 'black'
         goal_color = robot_color
@@ -592,32 +594,51 @@ class CrowdSim(gym.Env):
         if mode == 'traj':
             fig, ax = plt.subplots(figsize=(7, 7))
             ax.tick_params(labelsize=16)
-            ax.set_xlim(-5, 5)
-            ax.set_ylim(-5, 5)
+            ax.set_xlim(-9, 9)
+            ax.set_ylim(-9, 9)
             ax.set_xlabel('x(m)', fontsize=16)
             ax.set_ylabel('y(m)', fontsize=16)
 
             # add human start positions and goals
-            human_colors = [cmap(i) for i in range(len(self.humans))]
+            # human_colors = [cmap(i) for i in range(len(self.humans))]
+            # disable showing FoV
+            human_colors = []
+            for state in self.states:
+                colors = []
+                for h in range(len(self.humans)):
+                    # green: visible; red: invisible
+                    colors.append('#A6FFA6' if self.detect_visible(state[0], state[1][h]) else '#FF7575')
+                human_colors.append(colors)
+
             for i in range(len(self.humans)):
                 human = self.humans[i]
-                human_goal = mlines.Line2D([human.get_goal_position()[0]], [human.get_goal_position()[1]],
-                                           color=human_colors[i],
-                                           marker='*', linestyle='None', markersize=15)
-                ax.add_artist(human_goal)
+                # human_goal = mlines.Line2D([human.get_goal_position()[0]], [human.get_goal_position()[1]],
+                #                            color=human_colors[i],
+                #                            marker='*', linestyle='None', markersize=15)
+                # ax.add_artist(human_goal)
                 human_start = mlines.Line2D([human.get_start_position()[0]], [human.get_start_position()[1]],
-                                            color=human_colors[i],
-                                            marker='o', linestyle='None', markersize=15)
+                                            color=human_colors[i][0],
+                                            marker='o', linestyle='None', markersize=13)
                 ax.add_artist(human_start)
 
             robot_positions = [self.states[i][0].position for i in range(len(self.states))]
             human_positions = [[self.states[i][1][j].position for j in range(len(self.humans))]
                                for i in range(len(self.states))]
+            
+            # add robot goal
+            robot_goal = mlines.Line2D([self.robot.get_goal_position()[0]], [self.robot.get_goal_position()[1]],
+                                           color=robot_color,
+                                           marker='*', linestyle='None', markersize=15)
+            ax.add_artist(robot_goal)
+            robot_start = mlines.Line2D([self.robot.get_start_position()[0]], [self.robot.get_start_position()[1]],
+                                            color=robot_color,
+                                            marker='o', linestyle='None', markersize=13)
+            ax.add_artist(robot_start)
 
             for k in range(len(self.states)):
                 if k % 4 == 0 or k == len(self.states) - 1:
                     robot = plt.Circle(robot_positions[k], self.robot.radius, fill=False, color=robot_color)
-                    humans = [plt.Circle(human_positions[k][i], self.humans[i].radius, fill=False, color=cmap(i))
+                    humans = [plt.Circle(human_positions[k][i], self.humans[i].radius, fill=False, color=human_colors[k][i])
                               for i in range(len(self.humans))]
                     ax.add_artist(robot)
                     for human in humans:
@@ -638,18 +659,21 @@ class CrowdSim(gym.Env):
                                                color=robot_color, ls='solid')
                     human_directions = [plt.Line2D((self.states[k - 1][1][i].px, self.states[k][1][i].px),
                                                    (self.states[k - 1][1][i].py, self.states[k][1][i].py),
-                                                   color=cmap(i), ls='solid')
+                                                   color=human_colors[k][i], ls='solid')
                                         for i in range(self.human_num)]
                     ax.add_artist(nav_direction)
                     for human_direction in human_directions:
                         ax.add_artist(human_direction)
             plt.legend([robot], ['Robot'], fontsize=16)
-            plt.show()
+            if output_file:
+                plt.savefig(output_file + ".png", dpi=600)
+            else:
+                plt.show()
         elif mode == 'video':
             fig, ax = plt.subplots(figsize=(7, 7))
             ax.tick_params(labelsize=12)
-            ax.set_xlim(-11, 11)
-            ax.set_ylim(-11, 11)
+            ax.set_xlim(-9, 9)
+            ax.set_ylim(-9, 9)
             ax.set_xlabel('x(m)', fontsize=14)
             ax.set_ylabel('y(m)', fontsize=14)
             show_human_start_goal = False

@@ -8,6 +8,8 @@ from crowd_nav.policy.multi_human_rl import MultiHumanRL
 from crowd_sim.envs.utils.action import ActionRot, ActionXY
 from crowd_sim.envs.utils.state import ObservableState, FullState
 from crowd_sim.envs.utils.robot import sliceable_deque
+from torch.nn.functional import softmax, relu
+from torch.nn import Parameter
 
 
 class ConvTemporalGraphical(nn.Module):
@@ -62,6 +64,49 @@ class ConvTemporalGraphical(nn.Module):
         x = torch.einsum('nctv,ntvw->nctw', (x, A))
         return x.contiguous(), A
     
+class GCN(nn.Module):
+    def __init__(self, X_dim, final_state_dim):
+        """ The current code might not be compatible with models trained with previous version
+        """
+        super().__init__()
+        num_layer = 2
+        self.skip_connection = True
+
+        self.num_layer = num_layer
+        self.X_dim = X_dim
+
+        # TODO: try other dim size
+        embedding_dim = self.X_dim
+        self.Ws = torch.nn.ParameterList()
+        for i in range(self.num_layer):
+            if i == 0:
+                self.Ws.append(Parameter(torch.randn(4, self.X_dim, embedding_dim)))
+            elif i == self.num_layer - 1:
+                self.Ws.append(Parameter(torch.randn(4, embedding_dim, final_state_dim)))
+            else:
+                self.Ws.append(Parameter(torch.randn(embedding_dim, embedding_dim)))
+
+        # for visualization
+        self.A = None
+
+    
+    def forward(self, X, A):
+        """
+        Embed current state tensor pair (robot_state, human_states) into a latent space
+        Each tensor is of shape (batch_size, # of agent, features)
+        :param state:
+        :return:
+        """
+        next_H = H = X
+        for i in range(self.num_layer):
+            x = torch.einsum('nctv,ntvw->nctw', (X, A))
+            next_H = relu(torch.einsum('nctw,tch->nhtw',(x.contiguous(), self.Ws[i])))
+
+            if self.skip_connection:
+                next_H = next_H.clone() + H
+            H = next_H
+
+        return next_H, A
 
 class st_gcn(nn.Module):
     r"""Applies a spatial temporal graph convolution over an input graph sequence.
@@ -101,8 +146,9 @@ class st_gcn(nn.Module):
         padding = ((kernel_size[0] - 1) // 2, 0)
         self.use_mdn = use_mdn
 
-        self.gcn = ConvTemporalGraphical(in_channels, out_channels,
-                                         kernel_size[1])
+        # self.gcn = ConvTemporalGraphical(in_channels, out_channels,
+        #                                  kernel_size[1])
+        self.gcn = GCN(in_channels, out_channels)
         
 
         self.tcn = nn.Sequential(
@@ -186,11 +232,14 @@ class social_stgcnn(nn.Module):
     def forward(self,rv,hv,a):
         robot_state_embedings = self.w_r(rv)
         # if have humans just doing st_gcns
-        human_state_embedings = self.w_h(hv)
-        v = torch.cat([robot_state_embedings, human_state_embedings], dim=2)
-        v = v.permute(0,3,1,2)
-        for k in range(self.n_stgcnn):
-            v,a = self.st_gcns[k](v,a)
+        if a.shape[-1]!=0:
+            human_state_embedings = self.w_h(hv)
+            v = torch.cat([robot_state_embedings, human_state_embedings], dim=2)
+            v = v.permute(0,3,1,2)
+            for k in range(self.n_stgcnn):
+                v,a = self.st_gcns[k](v,a)
+        else:
+            v = robot_state_embedings.permute(0,3,1,2).contiguous()
             
         v = v.view(v.shape[0],v.shape[2],v.shape[1],v.shape[3])
         
