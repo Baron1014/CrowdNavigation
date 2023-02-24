@@ -34,3 +34,6 @@ orienv/cadrl/
 orienv/
 
 crowd_nav/vistualize/
+crowd_nav/ros_detection/__pycache__/
+
+crowd_nav/ros_detection/frozen_inference_graph.pb
