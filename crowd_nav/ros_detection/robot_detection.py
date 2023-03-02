@@ -19,10 +19,10 @@ def camera_detection(video_detector, detector):
     depth_frame = detector.get_depth_frames(frame)
     position, velocity = video_detector.detect_with_depth_info(color_img, depth_frame, threshold=detector.threshold)
     #End loop once video finishes
-    # key = cv2.waitKey(1)
+    key = cv2.waitKey(1)
     #End loop once video finishes
     detector.playback.resume()
-    # if key == 27:
-    #     cv2.destroyAllWindows()
+    if key == 27:
+        cv2.destroyAllWindows()
     
     return position, velocity 

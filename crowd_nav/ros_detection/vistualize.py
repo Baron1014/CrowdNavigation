@@ -260,7 +260,7 @@ class VideoVis(BasicDetector):
 
         cv2.imshow("Human Detection from Video", frame)
 
-    def detect_with_depth_info(self, frame, depth, threshold=None, show=False):
+    def detect_with_depth_info(self, frame, depth, threshold=None, show=True):
         frame, position, velocity = self._detect_color_with_depth(frame, depth, threshold)
 
         if show:

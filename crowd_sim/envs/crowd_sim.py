@@ -228,8 +228,13 @@ class CrowdSim(gym.Env):
        #     gy = np.random.uniform(self.circle_radius-1, self.circle_radius+1)
        #     if np.linalg.norm([px - gx, py - gy]) >= 8:
        #         break
-       px, gx = 0, 0
-       py, gy = -self.circle_radius-1, self.circle_radius+1
+       
+       if self.config.robot.gx and self.config.robot.gy:
+            px, py = 0, 0
+            gx, gy = self.config.robot.gx , self.config.robot.gy
+       else:
+            px, gx = 0, 0
+            py, gy = -self.circle_radius-1, self.circle_radius+1
        self.robot.set(px, py, gx, gy, 0, 0, np.pi/2)
         
 

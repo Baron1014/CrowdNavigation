@@ -3,11 +3,18 @@ import cv2
 import os
 import copy
 import numpy as np
-from persondetection import DetectorAPI
+import time 
+# from persondetection import DetectorAPI
 from itertools import product
+from detector import build_detector
+from deep_sort import build_tracker
+from utils.log import get_logger
+from utils.draw import draw_boxes, compute_color_for_labels
+import torch
+import warnings
 
 class BagVis:
-    def __init__(self, file, repeat=True, threshold=0.7, maxm=16):
+    def __init__(self, sys_args, config, file, repeat=True, threshold=0.7, maxm=16):
         '''
         repeat: Image or Video
             True: Video
@@ -18,6 +25,8 @@ class BagVis:
         self.config = rs.config()
         self.threshold = threshold
         self.maxm = maxm
+        self.args = sys_args
+        self.cfg = config
         rs.align(rs.stream.color)
         rs.config.enable_device_from_file(self.config, path+file, repeat_playback=repeat)
 
@@ -98,22 +107,57 @@ class BagVis:
                     detector.detect(color_img, threshold=self.threshold)
             
             elif show== 'video':
-                detector = VideoVis(output=output)
-                cout = 0
+                detector = VideoVis(self.cfg, self.args, output=output)
+                idx_frame = 0
                 while True:
+                    idx_frame +=1
+                    start = time.time()
                     going, frame = self.pipe.try_wait_for_frames(timeout_ms=20000)
                     playback.pause()
                     if going is False:
                         break
                     # align depth to color
                     frame = align.process(frame)
-                    color_img = self.get_color_img(frame)
-                    depth_frame = self.get_depth_frames(frame)
-                    if depth_info:
-                        detector.detect_with_depth_info(color_img, depth_frame, threshold=self.threshold)
-                    else:
-                        detector.detect(color_img, threshold=self.threshold)
-                    key = cv2.waitKey(1)
+                    bgr_img = self.get_color_img(frame)
+                    # deepsort
+                    rgb_im = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2RGB)
+                    bbox_xywh, cls_conf, cls_ids = detector.detector(bgr_img)
+                    # select person class
+                    mask = cls_ids == 0
+
+                    bbox_xywh = bbox_xywh[mask]
+                    # bbox dilation just in case bbox too small, delete this line if using a better pedestrian detector
+                    bbox_xywh[:, 3:] *= 1.2
+                    cls_conf = cls_conf[mask]
+
+                    # do tracking
+                    outputs = detector.deepsort.update(bbox_xywh, cls_conf, bgr_img)
+
+                    # draw boxes for visualization
+                    if len(outputs) > 0:
+                        bbox_tlwh = []
+                        bbox_xyxy = outputs[:, :4]
+                        identities = outputs[:, -1]
+                        rgb_im = draw_boxes(rgb_im, bbox_xyxy, identities)
+
+                        for bb_xyxy in bbox_xyxy:
+                            bbox_tlwh.append(detector.deepsort._xyxy_to_tlwh(bb_xyxy))
+
+                        depth_frame = self.get_depth_frames(frame)
+                        camera_coor = detector.get_depth_infor(depth_frame, bbox_xyxy)
+                        velocity = detector.get_velocity(identities, camera_coor, time.time()-start, idx_frame)
+                        self.draw_information(rgb_im, identities, velocity, bbox_xyxy, camera_coor)
+
+                    if self.args.display:
+                        cv2.imshow("test", rgb_im)
+                        key =cv2.waitKey(1)
+
+                    
+                    # key = cv2.waitKey(1)
+                    # if depth_info:
+                    #     detector.detect_with_depth_info(color_img, depth_frame, start_time=start, threshold=self.threshold)
+                    # else:
+                    #     detector.detect(color_img, threshold=self.threshold)
 
                     #End loop once video finishes
                     playback.resume()
@@ -125,16 +169,50 @@ class BagVis:
                     detector.writer.release()
         finally:
             self.pipe.stop()
-
+    
+    def draw_information(self, img, persons, velocitys, bb_boxs, coordinates):
+        for i in range(len(persons)):
+            velocity, box, camera_coordinate = velocitys[i], bb_boxs[i], coordinates[i]
+            person = persons[i]
+            if 0<=sum(map(abs,velocity))<10:
+                color = compute_color_for_labels(person)
+                position_label = f'Position:({camera_coordinate[0]:5.2f} {camera_coordinate[2]:5.2f})'
+                velocity_label = f'Velocity:({velocity[0]:5.2f} {velocity[1]:5.2f}) m/s'
+                p_size = cv2.getTextSize(position_label, cv2.FONT_HERSHEY_PLAIN, 2 , 2)[0]
+                v_size = cv2.getTextSize(velocity_label, cv2.FONT_HERSHEY_PLAIN, 1 , 2)[0]
+                cv2.rectangle(img,(box[0]-3, box[1]-2*(p_size[1]+v_size[1])),(box[0]+v_size[0],box[1]), color,-1)
+                cv2.putText(img, position_label, (box[0], box[1]-p_size[1]-v_size[1]), cv2.FONT_HERSHEY_PLAIN, 1, [255,255,255], 2)  # (75,0,130),
+                cv2.putText(img, velocity_label, (box[0], box[1]-v_size[1]), cv2.FONT_HERSHEY_PLAIN, 1, [255,255,255], 2)  # (75,0,130),
+        
 class BasicDetector:
-    def __init__(self):
+    def __init__(self,  cfg, args):
         self.max_count = 0
         self.max_acc = 0
         self.max_avg_acc = 0
-        self.odapi = DetectorAPI()
+        # self.odapi = DetectorAPI()
         self.threshold = 0.7
         self.old_time = None
         self.old_coordinate = None
+        self.person_coordinate = dict()
+        # deepsort
+        self.cfg = cfg
+        self.args = args
+        self.logger = get_logger("root")
+
+        use_cuda = args.use_cuda and torch.cuda.is_available()
+        if not use_cuda:
+            warnings.warn("Running in cpu mode which maybe very slow!", UserWarning)
+
+        if args.display:
+            cv2.namedWindow("test", cv2.WINDOW_NORMAL)
+            cv2.resizeWindow("test", args.display_width, args.display_height)
+
+        # if args.cam != -1:
+        #     print("Using webcam " + str(args.cam))
+        #     self.vdo = cv2.VideoCapture(args.cam)
+        self.vdo = cv2.VideoCapture()
+        self.detector = build_detector(cfg, use_cuda=use_cuda)
+        self.deepsort = build_tracker(cfg, use_cuda=use_cuda)
 
     def _detect(self, img, depth=None, threshold=None):
         boxes, scores, classes, num = self.odapi.processFrame(img)
@@ -159,12 +237,12 @@ class BasicDetector:
 
         return img
 
-    def _detect_color_with_depth(self, img, depth, threshold=None):
+    def _detect_color_with_depth(self, img, depth, start_time, threshold=None):
         boxes, scores, classes, num = self.odapi.processFrame(img)
         person = 0
         acc=0
         depth_intrin = depth.profile.as_video_stream_profile().intrinsics
-
+        end_time = time.time()
         for i in range(len(boxes)):
             if classes[i] == 1 and scores[i] > threshold:
                 box = boxes[i]
@@ -173,12 +251,12 @@ class BasicDetector:
                 left_top, right_bottom = [box[1], box[0]], [box[3], box[2]]
                 dis = self.get_depth_value(depth, left_top, right_bottom)
                 camera_coordinate = rs.rs2_deproject_pixel_to_point(intrin=depth_intrin, pixel=[center_x, center_y], depth=dis)
-                velocity = self.get_velocity(depth, camera_coordinate)
-                cv2.rectangle(img, (box[1], box[0]), (box[3], box[2]), (255,0,0), 2)  # cv2.FILLED #BGR
-                cv2.putText(img, f'P{person, round(scores[i], 2)}', (box[1] - 30, box[0] - 8), cv2.FONT_HERSHEY_COMPLEX,0.5, (255, 255, 0), 1)  # (75,0,130),
+                velocity = self.get_velocity(person, camera_coordinate, end_time-start_time)
+                cv2.rectangle(img, (box[1], box[0]), (box[3], box[2]), (138, 43, 226), 2)  # cv2.FILLED #BGR
+                cv2.putText(img, f'P{person, round(scores[i], 2)}', (box[1] - 30, box[0] - 8), cv2.FONT_HERSHEY_COMPLEX,0.5, (255,69,0), 1)  # (75,0,130),
                 if 0.01<sum(map(abs,velocity))<10:
-                    cv2.putText(img, f'Position:({camera_coordinate[0]:5.2f} {camera_coordinate[2]:5.2f})', (box[1] + 8, box[0] + 16), cv2.FONT_HERSHEY_PLAIN,1, (255, 255, 0), 1)  # (75,0,130),
-                    cv2.putText(img, f'Velocity:({velocity[0]:5.2f} {velocity[1]:5.2f}) m/s', (box[1] + 8, box[0] + 32), cv2.FONT_HERSHEY_PLAIN,1, (255, 255, 0), 1)  # (75,0,130),
+                    cv2.putText(img, f'Position:({camera_coordinate[0]:5.2f} {camera_coordinate[2]:5.2f})', (box[1] + 8, box[0] + 16), cv2.FONT_HERSHEY_PLAIN,1, (255,69,0), 1)  # (75,0,130),
+                    cv2.putText(img, f'Velocity:({velocity[0]:5.2f} {velocity[1]:5.2f}) m/s', (box[1] + 8, box[0] + 32), cv2.FONT_HERSHEY_PLAIN,1, (255,69,0), 1)  # (75,0,130),
                 
                 acc += scores[i]
                 if (scores[i] > self.max_acc):
@@ -202,26 +280,61 @@ class BasicDetector:
         filled_zero = list(filter(lambda x: x != 0, all_depth))
 
         return min(filled_zero)
+    
+    def get_center_depth_value(self, depth, center_x, center_y):
+        buffer = 10
+        all_x , all_y = list(), list()
+        for i, j in product(range(center_x-buffer, center_x+buffer), range(center_y-buffer, center_y+buffer)):
+            all_x.append(i)
+            all_y.append(j)
+        all_depth = list(map(depth.get_distance, all_x, all_y))
+        filled_zero = list(filter(lambda x: x != 0, all_depth))
 
-    def get_velocity(self, current_frame, current):
-        current_timestemp = current_frame.get_timestamp()
-        if self.old_time is None:
-            self.old_time = current_timestemp
-            self.old_coordinate = current
-            return [0, 0]
-        else:
-            duration = (current_timestemp-self.old_time)/1000 + 1e-9 # msec to sec
-            delta_x, delta_y = current[0] - self.old_coordinate[0], current[2] - self.old_coordinate[2]
-            v_x, v_y = delta_x/duration, delta_y/duration
+        return min(filled_zero) if len(filled_zero)>0 else 0
+
+    def get_velocity(self, persons, current_coor, delta_time, idx_frame):
+        v = []
+        for i in range(len(persons)):
+            person = persons[i]
+            current = current_coor[i] + [idx_frame]
+            self.old_coordinate = self.get_person_coordinate(person)
             
-            self.old_time = current_timestemp
-            self.old_coordinate = current
-            return [v_x, v_y] # m/s
+            if self.old_coordinate is None:
+                v_x, v_y = 0, 0
+            else:
+                delta_x, delta_y = current[0] - self.old_coordinate[0], current[2] - self.old_coordinate[2]
+                delta_frame =  current[3] - self.old_coordinate[3]
+                v_x, v_y = delta_x/delta_time/delta_frame, delta_y/delta_time/delta_frame
 
+            self.set_person_coordinate(person, current)
+            v.append([v_x, v_y])# m/s
+        return v 
+    
+    def get_person_coordinate(self, person):
+        if person not in self.person_coordinate.keys():
+            self.person_coordinate[person] = None
+        return self.person_coordinate[person]
+    
+    def set_person_coordinate(self, person, value):
+        self.person_coordinate[person] = value
+
+    def get_depth_infor(self, depth_img, bb_box):
+        coordinates = []
+        depth_intrin = depth_img.profile.as_video_stream_profile().intrinsics
+        for i in range(len(bb_box)):
+            box = bb_box[i]
+            center_x, center_y = box[0]+(box[2]-box[0])//2, box[1]+(box[3]-box[1])//2
+            left_top, right_bottom = [box[0], box[1]], [box[2], box[3]]
+            # dis = self.get_depth_value(depth_img, left_top, right_bottom)
+            dis = self.get_center_depth_value(depth_img, center_x, center_y)
+            camera_coordinate = rs.rs2_deproject_pixel_to_point(intrin=depth_intrin, pixel=[center_x, center_y], depth=dis)
+            coordinates.append(camera_coordinate)
+
+        return coordinates
 
 class VideoVis(BasicDetector):
-    def __init__(self, output=False, threshold=0.7):
-        super().__init__()
+    def __init__(self, cfg, args, output=False, threshold=0.7):
+        super().__init__(cfg, args)
         self.writer = output
         self.threshold = threshold
         if output:
@@ -241,8 +354,8 @@ class VideoVis(BasicDetector):
 
         cv2.imshow("Human Detection from Video", frame)
 
-    def detect_with_depth_info(self, frame, depth, threshold=None):
-        frame = self._detect_color_with_depth(frame, depth, threshold)
+    def detect_with_depth_info(self, frame, depth, start_time, threshold=None):
+        frame = self._detect_color_with_depth(frame, depth, start_time, threshold)
 
         if self.writer:
             self.writer.write(cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
@@ -253,7 +366,7 @@ class VideoVis(BasicDetector):
     def detect_video(self, file):
         path = os.path.dirname(os.path.realpath(__file__))
         self.file = path+file
-        video = cv2.VideoCapture(self.file)
+        video = self.vdo(self.file)
         check, _ = video.read()
         if check == False:
             print('Video Not Found. Please Enter a Valid Path (Full path of Video Should be Provided).')
@@ -261,10 +374,13 @@ class VideoVis(BasicDetector):
 
         while video.isOpened():
             # check is True if reading was successful
+            # s = time.start()
             check, frame = video.read()
+            
             if(check==True):
                 self._detect(frame)
                 key = cv2.waitKey(1)
+
                 #End loop once video finishes
                 if key == 27:
                     cv2.destroyAllWindows()
