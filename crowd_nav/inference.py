@@ -5,6 +5,8 @@ import os
 import torch
 import numpy as np
 import gym
+import time
+import cv2
 from crowd_nav.policy.policy_factory import policy_factory
 from crowd_sim.envs.utils.robot import Robot
 from crowd_sim.envs.policy.orca import ORCA
@@ -80,8 +82,10 @@ def main(args):
 
     _ = env.reset(args.phase, args.test_case)
     done = False
+    idx_frame = 0
     while not done:
-        # last_pos = input_coodinate()
+        idx_frame +=1
+        start = time.time()
         last_pos = np.array(robot.get_position())
         robot.set_position(last_pos)
         reaching_goal = np.linalg.norm(last_pos - np.array(robot.get_goal_position())) < robot.radius
@@ -89,24 +93,27 @@ def main(args):
             done = True
             action = ActionXY(0, 0)
         else:
-            position, velocity = robot_detection.camera_detection(video_detector, detector)
+            position, velocity, key = robot_detection.camera_detection(video_detector, detector, start, idx_frame)
             ob = compute_observation(last_pos, position, velocity, env_config)
             action = robot.act(ob)
             _, _, _, info = env.step(action)
         logging.info('Robot position: {}, Velocity: {}), Speed: {:.2f}'.format(
             last_pos, action, np.linalg.norm(action)))
+        
+        #End loop once video finishes
+        if key == 27:
+            cv2.destroyAllWindows()
+            break
 
-def input_coodinate():
-    input_string = input("Input robot's coordinate (x,y): ")
-    coordinate = input_string.split()
-    coordinate = [float(i) for i in coordinate]
-    return np.array(coordinate)
 
 def compute_observation(robot_pos, position, velocity, config):
     ob = []
     for i in range(len(position)):
         human = Human(i+1, config, 'humans')
-        pos, vel = robot_pos+position[i], velocity[i]
+        human_xy = [position[i][0], position[i][2]]
+        if human_xy[0] is np.inf or human_xy[1] is np.inf:
+            human_xy = [999, 999]
+        pos, vel = robot_pos+human_xy, velocity[i]
         human.set(pos[0], pos[1], 0, 0, vel[0], vel[1], 0.1)
         ob.append(human.get_id_observable_state())
     
@@ -131,6 +138,13 @@ if __name__ == '__main__':
     parser.add_argument('--bag_file', type=str, default='/data/20221024_142540.bag')
     parser.add_argument('--video_output_dir', type=str, default='data/inference')
     parser.add_argument('--video_output_name', type=str, default='CHIMEI_6F.avi')
+    # camera
+    parser.add_argument("--cpu", dest="use_cuda", action="store_false", default=True)
+    parser.add_argument("--display", default=True, action="store_true")
+    parser.add_argument("--display_width", type=int, default=800)
+    parser.add_argument("--display_height", type=int, default=600)
+    parser.add_argument("--config_deepsort", type=str, default="configs/deep_sort.yaml")
+    parser.add_argument("--config_detection", type=str, default="configs/yolov3.yaml")
 
     sys_args = parser.parse_args()
 
