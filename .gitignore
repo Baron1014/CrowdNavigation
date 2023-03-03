@@ -69,3 +69,19 @@ ros/detection/detector/YOLOv3/nms/
 ros/detection/detector/YOLOv3/weight/
 
 ros/detection/utils/__pycache__/
+
+crowd_nav/.vscode/
+
+crowd_nav/deep_sort/__pycache__/
+
+crowd_nav/deep_sort/deep/__pycache__/
+
+crowd_nav/deep_sort/deep/checkpoint/
+crowd_nav/deep_sort/
+crowd_nav/deepsort_utils/__pycache__/
+crowd_nav/detector/
+
+mmdetection
+
+Python-RVO2
+venv
