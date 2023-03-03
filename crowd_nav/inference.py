@@ -16,7 +16,7 @@ from ros_detection import robot_detection
 from crowd_sim.envs.utils.human import Human
 
 
-def main(args):
+def init(args):
     # camera setting
     video_detector, detector = robot_detection.camera_setting(args)
 
@@ -81,25 +81,35 @@ def main(args):
     robot.print_info()
 
     _ = env.reset(args.phase, args.test_case)
+    return video_detector, detector, robot, env_config
+
+def inference(pos_x, pos_y, robot=None, video_detector=None, detector=None, env_config=None, idx_frame=0):
+    start = time.time()
+    last_pos = np.array(robot.get_position())
+    robot.set_position(last_pos)
+    reaching_goal = np.linalg.norm(last_pos - np.array(robot.get_goal_position())) < robot.radius
+    if reaching_goal:
+        done = True
+        action = ActionXY(0, 0)
+    else:
+        position, velocity, key = robot_detection.camera_detection(video_detector, detector, start, idx_frame)
+        ob = compute_observation(last_pos, position, velocity, env_config)
+        action = robot.act(ob)
+        # _, _, _, info = env.step(action)
+    logging.info('Robot position: {}, Velocity: {}), Speed: {:.2f}'.format(
+        last_pos, action, np.linalg.norm(action)))
+    
+    return action, done, key
+    
+
+def main(args):
+    video_detector, detector, robot, eg = init(args)
     done = False
     idx_frame = 0
     while not done:
         idx_frame +=1
-        start = time.time()
-        last_pos = np.array(robot.get_position())
-        robot.set_position(last_pos)
-        reaching_goal = np.linalg.norm(last_pos - np.array(robot.get_goal_position())) < robot.radius
-        if reaching_goal:
-            done = True
-            action = ActionXY(0, 0)
-        else:
-            position, velocity, key = robot_detection.camera_detection(video_detector, detector, start, idx_frame)
-            ob = compute_observation(last_pos, position, velocity, env_config)
-            action = robot.act(ob)
-            _, _, _, info = env.step(action)
-        logging.info('Robot position: {}, Velocity: {}), Speed: {:.2f}'.format(
-            last_pos, action, np.linalg.norm(action)))
-        
+        vel, done, key = inference(p_x, p_y, video_detector, detector, robot, eg, idx_frame)
+    
         #End loop once video finishes
         if key == 27:
             cv2.destroyAllWindows()
