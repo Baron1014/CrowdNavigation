@@ -5,22 +5,25 @@ from ros_detection.vistualize import BagVis
 from deepsort_utils.parser import get_config
 from deepsort_utils.draw import draw_boxes
 
+
 def camera_setting(sys_args):
     path = os.path.dirname(os.path.realpath(__file__))
     cfg = get_config()
     cfg.USE_MMDET = False
-    cfg.merge_from_file(os.path.join(path,sys_args.config_detection))
-    cfg.merge_from_file(os.path.join(path,sys_args.config_deepsort))
+    cfg.merge_from_file(os.path.join(path, sys_args.config_detection))
+    cfg.merge_from_file(os.path.join(path, sys_args.config_deepsort))
     cfg.USE_FASTREID = False
     output_file = os.path.join(path, sys_args.video_output_dir, sys_args.video_output_name)
     detector = BagVis(sys_args, cfg, sys_args.bag_file, repeat=False)
     video_detector = detector.get_video_detector(output_file)
+    profile = detector.pipe.start()
 
     return video_detector, detector
 
+
 def camera_detection(video_detector, detector, start_time, idx_frame):
     going, frame = detector.pipe.try_wait_for_frames(timeout_ms=20000)
-    detector.playback.pause()
+    #detector.playback.pause()
     # align depth to color
     frame = detector.align.process(frame)
     bgr_img = detector.get_color_img(frame)
@@ -51,13 +54,13 @@ def camera_detection(video_detector, detector, start_time, idx_frame):
 
         depth_frame = detector.get_depth_frames(frame)
         camera_coor = video_detector.get_depth_infor(depth_frame, bbox_xyxy)
-        velocity = video_detector.get_velocity(identities, camera_coor, time.time()-start_time, idx_frame)
+        velocity = video_detector.get_velocity(identities, camera_coor, time.time() - start_time, idx_frame)
         detector.draw_information(rgb_im, identities, velocity, bbox_xyxy, camera_coor)
 
     if detector.args.display:
-        cv2.imshow("test", rgb_im)
-        key =cv2.waitKey(1)
-    detector.playback.resume()
+        #cv2.imshow("test", rgb_im)
+        #key = cv2.waitKey(1)
+        pass
+    #detector.playback.resume()
 
-    
     return camera_coor, velocity, key

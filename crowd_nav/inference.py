@@ -24,8 +24,7 @@ def init(args):
     logger.log_setting(args, log_file)
     # configure logging and device
     level = logging.DEBUG if args.debug else logging.INFO
-    logging.basicConfig(level=level, format='%(asctime)s, %(levelname)s: %(message)s',
-                        datefmt="%Y-%m-%d %H:%M:%S")
+    logging.basicConfig(level=level, format='%(asctime)s, %(levelname)s: %(message)s', datefmt="%Y-%m-%d %H:%M:%S")
     device = torch.device("cuda:0" if torch.cuda.is_available() and args.gpu else "cpu")
     logging.info('Using device: %s', device)
 
@@ -83,7 +82,9 @@ def init(args):
     _ = env.reset(args.phase, args.test_case)
     return video_detector, detector, robot, env_config
 
+
 def inference(pos_x, pos_y, robot=None, video_detector=None, detector=None, env_config=None, idx_frame=0):
+    done = False
     start = time.time()
     last_pos = np.array(robot.get_position())
     robot.set_position(last_pos)
@@ -96,20 +97,19 @@ def inference(pos_x, pos_y, robot=None, video_detector=None, detector=None, env_
         ob = compute_observation(last_pos, position, velocity, env_config)
         action = robot.act(ob)
         # _, _, _, info = env.step(action)
-    logging.info('Robot position: {}, Velocity: {}), Speed: {:.2f}'.format(
-        last_pos, action, np.linalg.norm(action)))
-    
+    logging.info('Robot position: {}, Velocity: {}), Speed: {:.2f}'.format(last_pos, action, np.linalg.norm(action)))
+
     return action, done, key
-    
+
 
 def main(args):
     video_detector, detector, robot, eg = init(args)
-    done = False
     idx_frame = 0
+    done = False
     while not done:
-        idx_frame +=1
+        idx_frame += 1
         vel, done, key = inference(p_x, p_y, video_detector, detector, robot, eg, idx_frame)
-    
+
         #End loop once video finishes
         if key == 27:
             cv2.destroyAllWindows()
@@ -119,17 +119,16 @@ def main(args):
 def compute_observation(robot_pos, position, velocity, config):
     ob = []
     for i in range(len(position)):
-        human = Human(i+1, config, 'humans')
+        human = Human(i + 1, config, 'humans')
         human_xy = [position[i][0], position[i][2]]
         if human_xy[0] is np.inf or human_xy[1] is np.inf:
             human_xy = [999, 999]
-        pos, vel = robot_pos+human_xy, velocity[i]
+        pos, vel = robot_pos + human_xy, velocity[i]
         human.set(pos[0], pos[1], 0, 0, vel[0], vel[1], 0.1)
         ob.append(human.get_id_observable_state())
-    
+
     return ob
 
-    
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser('Parse configuration file')
