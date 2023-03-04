@@ -53,7 +53,8 @@ class ObservableState(object):
         return self.px, self.py, self.vx, self.vy, self.radius
     
     def to_id_tuple(self):
-        return self.id, self.px, self.py, self.vx, self.vy
+        # return self.id, self.px, self.py, self.vx, self.vy
+        return self.id, self.px, self.py, 0, 0
 
 
 class JointState(object):

@@ -3,6 +3,7 @@ import torch.nn as nn
 import numpy as np
 import math
 import networkx as nx
+import logging
 from crowd_nav.policy.helpers import mlp
 from crowd_nav.policy.multi_human_rl import MultiHumanRL
 from crowd_sim.envs.utils.action import ActionRot, ActionXY
@@ -282,6 +283,7 @@ class SSTGCNN_RL(MultiHumanRL):
         self.set_common_parameters(config) 
         self.multiagent_training = config.social_stgcnn.multiagent_training
         self.model = social_stgcnn(config, self.robot_state_dim, self.human_state_dim)
+        logging.info('Policy: Social-STGCN RL')
     
     def predict(self, state, ego_memory_state):
         """
