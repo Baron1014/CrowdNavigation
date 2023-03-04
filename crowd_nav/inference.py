@@ -86,7 +86,11 @@ def init(args):
 def inference(pos_x, pos_y, robot=None, video_detector=None, detector=None, env_config=None, idx_frame=0):
     done = False
     start = time.time()
-    last_pos = np.array(robot.get_position())
+    if pos_x is None and pos_y is None:
+        last_pos = np.array(robot.get_position())
+    else:
+        last_pos = np.array([pos_x, pos_y])
+    
     robot.set_position(last_pos)
     reaching_goal = np.linalg.norm(last_pos - np.array(robot.get_goal_position())) < robot.radius
     if reaching_goal:
@@ -106,6 +110,7 @@ def main(args):
     video_detector, detector, robot, eg = init(args)
     idx_frame = 0
     done = False
+    p_x, p_y = None, None
     while not done:
         idx_frame += 1
         vel, done, key = inference(p_x, p_y, video_detector, detector, robot, eg, idx_frame)
