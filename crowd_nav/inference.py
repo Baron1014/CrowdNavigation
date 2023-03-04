@@ -113,7 +113,7 @@ def main(args):
     p_x, p_y = None, None
     while not done:
         idx_frame += 1
-        vel, done, key = inference(p_x, p_y, video_detector, detector, robot, eg, idx_frame)
+        vel, done, key = inference(p_x, p_y, robot, video_detector, detector, eg, idx_frame)
 
         #End loop once video finishes
         if key == 27:
