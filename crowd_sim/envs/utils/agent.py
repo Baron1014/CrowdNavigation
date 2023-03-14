@@ -36,6 +36,7 @@ class Agent(object):
         logging.info('Agent is {} and has {} kinematic constraint'.format(
             'visible' if self.visible else 'invisible', self.kinematics))
         logging.info('Robot sensor use {}'.format(self.sensor))
+        logging.info('Robot goal :[{}, {}]'.format(self.gx, self.gy))
         if self.sensor=='RGBD':
             logging.info('Robot FOV: {:.4f}/rad'.format(self.FoV))
      

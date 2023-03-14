@@ -80,9 +80,9 @@ def init(args):
     policy.set_phase(args.phase)
     policy.set_device(device)
     policy.set_env(env)
-    robot.print_info()
 
     _ = env.reset(args.phase, args.test_case)
+    robot.print_info()
     env = None
     return video_detector, detector, robot, env_config, env
 
