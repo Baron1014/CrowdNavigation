@@ -72,6 +72,8 @@ if __name__ == "__main__":
     parser.add_argument("--display_height", type=int, default=600)
     parser.add_argument("--config_deepsort", type=str, default="configs/deep_sort.yaml")
     parser.add_argument("--config_detection", type=str, default="configs/yolov3.yaml")
+    parser.add_argument("gx", type=float)
+    parser.add_argument("gy", type=float)
     sys_args = parser.parse_args()
 
     main(sys_args)
