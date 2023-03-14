@@ -121,6 +121,26 @@ class CrowdSim(gym.Env):
             human = self.random_square_crossing_human(_id)
 
         return human
+    
+    def generate_static_human(self, _id):
+        human = Human(_id, self.config, 'humans')
+        human.sample_random_attributes()
+        while True:
+            # add some noise to simulate all the possible cases robot could meet with human
+            px = 0
+            py = 0
+            collide = False
+            for i, agent in enumerate([self.robot] + self.humans):
+                min_dist = human.radius + agent.radius + self.discomfort_dist
+                if norm((px - agent.px, py - agent.py)) < min_dist or \
+                        norm((px - agent.gx, py - agent.gy)) < min_dist:
+                    collide = True
+                    break
+            if not collide:
+                break
+        human.set(px, py, -px, -py, 0, 0, 0)
+
+        return human
 
     def random_circle_crossing_human(self, _id):
         human = Human(_id, self.config, 'humans')
@@ -229,7 +249,7 @@ class CrowdSim(gym.Env):
        #     if np.linalg.norm([px - gx, py - gy]) >= 8:
        #         break
        
-       if self.config.robot.gx and self.config.robot.gy:
+       if self.config.robot.gx is not None and self.config.robot.gy is not None:
             px, py = 0, 0
             gx, gy = self.config.robot.gx , self.config.robot.gy
        else:
