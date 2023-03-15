@@ -97,16 +97,21 @@ def inference(pos_x, pos_y, old_vel, robot=None, video_detector=None, detector=N
 
     robot.set_position(last_pos)
     reaching_goal = np.linalg.norm(last_pos - np.array(robot.get_goal_position())) < robot.radius
-    if reaching_goal:
-        done = True
-        action = ActionXY(0, 0)
-    else:
-        position, velocity, key = robot_detection.camera_detection(video_detector, detector, start, idx_frame)
-        ob = compute_observation(last_pos, position, velocity, env_config)
-        action = robot.act(ob)
-        if env is not None:
-            _, _, _, info = env.step(action)
-
+    try:
+        if reaching_goal:
+            done = True
+            action = ActionXY(0, 0)
+        else:
+            position, velocity, key = robot_detection.camera_detection(video_detector, detector, start, idx_frame)
+            ob = compute_observation(last_pos, position, velocity, env_config)
+            action = robot.act(ob)
+            if env is not None:
+                _, _, _, info = env.step(action)
+    except:
+        out = video_detector.get_writer()
+        out.release()
+        raise EOFError('inference error!!')
+    
     if old_vel is None:
         accel = action
     else:
@@ -148,6 +153,10 @@ def compute_observation(robot_pos, position, velocity, config):
 
 
 if __name__ == '__main__':
+    from datetime import datetime
+    t = datetime.now()
+    video_name = f'{t.year}{t.month}{t.day}{t.hour}{t.minute}{t.second}'
+
     parser = argparse.ArgumentParser('Parse configuration file')
     parser.add_argument('--config', type=str, default=None)
     parser.add_argument('-m', '--model_dir', type=str, default='data/inference')
@@ -162,8 +171,8 @@ if __name__ == '__main__':
     parser.add_argument('--human_num', type=int, default=5)
     parser.add_argument('--resume', default=False, action='store_true')
     parser.add_argument('--bag_file', type=str, default='/data/20221024_142540.bag')
-    parser.add_argument('--video_output_dir', type=str, default='data/inference')
-    parser.add_argument('--video_output_name', type=str, default='CHIMEI_6F.avi')
+    parser.add_argument('--video_output_dir', type=str, default='data/video')
+    parser.add_argument('--video_output_name', type=str, default=f'{video_name}.avi')
     # camera
     parser.add_argument("--cpu", dest="use_cuda", action="store_false", default=True)
     parser.add_argument("--display", default=True, action="store_true")

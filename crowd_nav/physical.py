@@ -50,6 +50,10 @@ def main(args):
 
 
 if __name__ == "__main__":
+    from datetime import datetime
+    t = datetime.now()
+    video_name = f'{t.year}{t.month}{t.day}{t.hour}{t.minute}{t.second}'
+
     parser = argparse.ArgumentParser("Parse configuration file")
     parser.add_argument("--config", type=str, default=None)
     parser.add_argument("-m", "--model_dir", type=str, default="data/inference")
@@ -64,8 +68,8 @@ if __name__ == "__main__":
     parser.add_argument("--human_num", type=int, default=5)
     parser.add_argument("--resume", default=False, action="store_true")
     parser.add_argument("--bag_file", type=str, default="/data/20221024_142540.bag")
-    parser.add_argument("--video_output_dir", type=str, default="data/inference")
-    parser.add_argument("--video_output_name", type=str, default="CHIMEI_6F.avi")
+    parser.add_argument("--video_output_dir", type=str, default="data/video")
+    parser.add_argument('--video_output_name', type=str, default=f'{video_name}.avi')
     # camera
     parser.add_argument("--cpu", dest="use_cuda", action="store_false", default=True)
     parser.add_argument("--display", default=True, action="store_true")

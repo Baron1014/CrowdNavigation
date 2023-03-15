@@ -56,10 +56,11 @@ def camera_detection(video_detector, detector, start_time, idx_frame):
         camera_coor = video_detector.get_depth_infor(depth_frame, bbox_xyxy)
         velocity = video_detector.get_velocity(identities, camera_coor, time.time() - start_time, idx_frame)
         detector.draw_information(rgb_im, identities, velocity, bbox_xyxy, camera_coor)
-
+    out = video_detector.get_writer()
+    out.write(rgb_im)
     if detector.args.display:
-        #cv2.imshow("test", rgb_im)
-        #key = cv2.waitKey(1)
+        cv2.imshow("test", rgb_im)
+        key = cv2.waitKey(1)
         pass
     #detector.playback.resume()
 

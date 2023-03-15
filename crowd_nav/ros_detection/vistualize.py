@@ -159,9 +159,9 @@ class BasicDetector:
         if not use_cuda:
             warnings.warn("Running in cpu mode which maybe very slow!", UserWarning)
 
-        if args.display:
-            #cv2.namedWindow("test", cv2.WINDOW_NORMAL)
-            cv2.resizeWindow("test", args.display_width, args.display_height)
+        #if args.display:
+        #cv2.namedWindow("test", cv2.WINDOW_NORMAL)
+        #cv2.resizeWindow("test", args.display_width, args.display_height)
 
         self.vdo = cv2.VideoCapture()
         self.detector = build_detector(cfg, use_cuda=use_cuda)
@@ -236,3 +236,6 @@ class VideoVis(BasicDetector):
 
     def set_writer(self, file_name):
         return cv2.VideoWriter(file_name, cv2.VideoWriter_fourcc(*'XVID'), 20, (1280, 720))
+
+    def get_writer(self):
+        return self.writer
