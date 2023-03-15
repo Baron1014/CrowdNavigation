@@ -59,6 +59,9 @@ def init(args):
 
     # configure environment
     env_config = config.EnvConfig(args.debug)
+    if args.gx is not None and args.gy is not None:
+        env_config.robot.gx = args.gx
+        env_config.robot.gy = args.gy
 
     if args.human_num is not None:
         env_config.sim.human_num = args.human_num
@@ -77,20 +80,21 @@ def init(args):
     policy.set_phase(args.phase)
     policy.set_device(device)
     policy.set_env(env)
-    robot.print_info()
 
     _ = env.reset(args.phase, args.test_case)
-    return video_detector, detector, robot, env_config
+    robot.print_info()
+    env = None
+    return video_detector, detector, robot, env_config, env
 
 
-def inference(pos_x, pos_y, robot=None, video_detector=None, detector=None, env_config=None, idx_frame=0):
+def inference(pos_x, pos_y, old_vel, robot=None, video_detector=None, detector=None, env_config=None, idx_frame=0, env=None):
     done = False
     start = time.time()
     if pos_x is None and pos_y is None:
         last_pos = np.array(robot.get_position())
     else:
         last_pos = np.array([pos_x, pos_y])
-    
+
     robot.set_position(last_pos)
     reaching_goal = np.linalg.norm(last_pos - np.array(robot.get_goal_position())) < robot.radius
     if reaching_goal:
@@ -100,20 +104,28 @@ def inference(pos_x, pos_y, robot=None, video_detector=None, detector=None, env_
         position, velocity, key = robot_detection.camera_detection(video_detector, detector, start, idx_frame)
         ob = compute_observation(last_pos, position, velocity, env_config)
         action = robot.act(ob)
-        # _, _, _, info = env.step(action)
+        if env is not None:
+            _, _, _, info = env.step(action)
+
+    if old_vel is None:
+        accel = action
+    else:
+        accel = ActionXY(action[0] - old_vel[0], action[1] - old_vel[1])
     logging.info('Robot position: {}, Velocity: {}), Speed: {:.2f}'.format(last_pos, action, np.linalg.norm(action)))
 
-    return action, done, key
+    return action, accel, done, key
 
 
 def main(args):
-    video_detector, detector, robot, eg = init(args)
+    video_detector, detector, robot, eg, env = init(args)
     idx_frame = 0
     done = False
     p_x, p_y = None, None
+    old_vel = None
     while not done:
         idx_frame += 1
-        vel, done, key = inference(p_x, p_y, robot, video_detector, detector, eg, idx_frame)
+        vel, accel, done, key = inference(p_x, p_y, old_vel, robot, video_detector, detector, eg, idx_frame, env)
+        old_vel = vel
 
         #End loop once video finishes
         if key == 27:
@@ -159,6 +171,8 @@ if __name__ == '__main__':
     parser.add_argument("--display_height", type=int, default=600)
     parser.add_argument("--config_deepsort", type=str, default="configs/deep_sort.yaml")
     parser.add_argument("--config_detection", type=str, default="configs/yolov3.yaml")
+    parser.add_argument("--gx", type=float, default=0.0)
+    parser.add_argument("--gy", type=float, default=16.5)
 
     sys_args = parser.parse_args()
 
