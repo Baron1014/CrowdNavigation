@@ -4,6 +4,7 @@ import os
 import copy
 import numpy as np
 import time
+
 # from persondetection import DetectorAPI
 from itertools import product
 from detector import build_detector
@@ -15,13 +16,12 @@ import warnings
 
 
 class BagVis:
-
     def __init__(self, sys_args, config, file, repeat=True, threshold=0.7, maxm=16):
-        '''
+        """
         repeat: Image or Video
             True: Video
             False: Image
-        '''
+        """
         path = os.path.dirname(os.path.realpath(__file__))
         self.pipe = rs.pipeline()
         self.config = rs.config()
@@ -36,9 +36,9 @@ class BagVis:
         self.align = rs.align(align_to)
         self.config.enable_stream(rs.stream.color, 1280, 720, rs.format.rgb8, 30)
         self.config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
-        #profile = self.pipe.start(self.config)
-        #self.playback = profile.get_device().as_playback()
-        #self.playback.set_real_time(False)
+        # profile = self.pipe.start(self.config)
+        # self.playback = profile.get_device().as_playback()
+        # self.playback.set_real_time(False)
 
     def get_video_detector(self, output):
         return VideoVis(self.cfg, self.args, output=output)
@@ -114,7 +114,7 @@ class BagVis:
                     cv2.imshow("test", rgb_im)
                     key = cv2.waitKey(1)
 
-                #End loop once video finishes
+                # End loop once video finishes
                 playback.resume()
                 if key == 27:
                     cv2.destroyAllWindows()
@@ -130,8 +130,8 @@ class BagVis:
             velocity, box, camera_coordinate = velocitys[i], bb_boxs[i], coordinates[i]
             person = persons[i]
             color = compute_color_for_labels(person)
-            position_label = f'Position:({camera_coordinate[0]:5.2f} {camera_coordinate[2]:5.2f})'
-            velocity_label = f'Velocity:({velocity[0]:5.2f} {velocity[1]:5.2f}) m/s'
+            position_label = f"Position:({camera_coordinate[0]:5.2f} {camera_coordinate[2]:5.2f})"
+            velocity_label = f"Velocity:({velocity[0]:5.2f} {velocity[1]:5.2f}) m/s"
             p_size = cv2.getTextSize(position_label, cv2.FONT_HERSHEY_PLAIN, 2, 2)[0]
             v_size = cv2.getTextSize(velocity_label, cv2.FONT_HERSHEY_PLAIN, 2, 2)[0]
             cv2.rectangle(img, (box[0] - 3, box[1] - 2 * (p_size[1] + v_size[1])), (box[0] + v_size[0], box[1]), color, -1)
@@ -140,7 +140,6 @@ class BagVis:
 
 
 class BasicDetector:
-
     def __init__(self, cfg, args):
         self.max_count = 0
         self.max_acc = 0
@@ -159,9 +158,9 @@ class BasicDetector:
         if not use_cuda:
             warnings.warn("Running in cpu mode which maybe very slow!", UserWarning)
 
-        #if args.display:
-        #cv2.namedWindow("test", cv2.WINDOW_NORMAL)
-        #cv2.resizeWindow("test", args.display_width, args.display_height)
+        # if args.display:
+        # cv2.namedWindow("test", cv2.WINDOW_NORMAL)
+        # cv2.resizeWindow("test", args.display_width, args.display_height)
 
         self.vdo = cv2.VideoCapture()
         self.detector = build_detector(cfg, use_cuda=use_cuda)
@@ -226,7 +225,6 @@ class BasicDetector:
 
 
 class VideoVis(BasicDetector):
-
     def __init__(self, cfg, args, output=False, threshold=0.7):
         super().__init__(cfg, args)
         self.writer = output

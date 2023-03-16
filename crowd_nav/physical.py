@@ -18,10 +18,10 @@ def callback(data):
 
 def main(args):
 
-    rospy.init_node("crowd_nav")
+    #rospy.init_node("crowd_nav")
 
-    rospy.Subscriber("/amcl_pose", PoseWithCovarianceStamped, callback)
-    pub = rospy.Publisher("/cmd_vel", Twist, queue_size=10)
+    #rospy.Subscriber("/amcl_pose", PoseWithCovarianceStamped, callback)
+    #pub = rospy.Publisher("/cmd_vel", Twist, queue_size=10)
 
     v_detector, detector, robot, eg, _ = init(args)
     done = False
@@ -44,7 +44,7 @@ def main(args):
             msg.linear.y = -vel.vx / 10
             msg.linear.x = vel.vy / 10
 
-            pub.publish((msg))
+            #pub.publish((msg))
     finally:
         detector.pipe.stop()
 
@@ -52,7 +52,7 @@ def main(args):
 if __name__ == "__main__":
     from datetime import datetime
     t = datetime.now()
-    video_name = f'{t.year}{t.month}{t.day}{t.hour}{t.minute}{t.second}'
+    video_name = f'{t.year}{t.month}{t.day}{t.hour}'
 
     parser = argparse.ArgumentParser("Parse configuration file")
     parser.add_argument("--config", type=str, default=None)

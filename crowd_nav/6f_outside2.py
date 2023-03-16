@@ -24,7 +24,7 @@ from scipy.spatial.transform import Rotation as Rot
 from inference import inference, init
 from geometry_msgs.msg import Twist
 
-robotPos = np.array([2.0, 0.0])
+robotPos = np.array([0.0, 0.0])
 
 
 class CrowdAvoidanceLeaf(RMPLeaf):
@@ -41,10 +41,19 @@ class CrowdAvoidanceLeaf(RMPLeaf):
         def RMP_func(x, x_dot):
             G = np.eye(2) * 0.5
             M = G
-            print(x)
-            print(x_dot)
-            _, f, _, _ = inference(x[0][0], x[1][0], x_dot, robot=robot, video_detector=v_detector, detector=detector, env_config=eg, idx_frame=idx_frame)
 
+            x_o = x_dot[0]
+            y_o = x_dot[1]
+            x_dot[0] = -y_o
+            x_dot[1] = x_o
+
+            _, a, _, _ = inference(-x[1][0], x[0][0], x_dot, robot=robot, video_detector=v_detector, detector=detector, env_config=eg, idx_frame=idx_frame)
+            x_c = a[0]
+            y_c = a[1]
+
+            f = np.array([[.0], [.0]])
+            f[0][0] = y_c
+            f[1][0] = -x_c
             return (f, M)
 
         RMPLeaf.__init__(self, name, parent, None, psi, J, J_dot, RMP_func)
@@ -60,22 +69,25 @@ def main(args):
     idx_frame = 0
     old_vel = None
 
-    collisionBox = fcl.Box(9., 16.3, 1e5)
+    collisionBox = fcl.Box(9.0, 16.3, 1e5)
+    collisionBox2 = fcl.Box(9.0, 1, 1e5)
     robotBox = fcl.Box(0.8, 0.5, 1e5)
 
-    T = fcl.Transform(np.array([5.26, 8.15, 0.]))
+    T = fcl.Transform(np.array([5.65, 8.15, 0.0]))
     collision = fcl.CollisionObject(collisionBox, T)
+    T = fcl.Transform(np.array([5.65, 18.8, 0.0]))
+    collision2 = fcl.CollisionObject(collisionBox2, T)
 
     x = np.array([0.0, 0.0])
     x_dot = np.array([0.0, 0.0])
-    x_g = np.array([5, 17])
+    x_g = np.array([7.5, 17])
     # x_g = np.array([2.12, 4.619])
 
     state_0 = np.concatenate((x, x_dot), axis=None)
 
     # --------------------------------------------
     def getWayPoint(x, count):
-        wayPoint = np.array([[5, 17]])
+        wayPoint = np.array([[7.5, 17.45]])
 
         if norm(wayPoint[count] - x) < 0.20:
             count = count + 1
@@ -114,8 +126,8 @@ def main(args):
     # ----------------------------------------------
     def commandTrans(vel):
         ret = np.array([0.0, 0.0])
-        ret[1] = -vel[0]
-        ret[0] = vel[1]
+        ret[1] = vel[1]
+        ret[0] = vel[0]
 
         return ret
 
@@ -142,7 +154,7 @@ def main(args):
         state[0] = lidarPos[0]
         state[1] = lidarPos[1]
 
-        print('\n')
+        print("\n")
         print(state)
 
         start = time.time()
@@ -150,15 +162,20 @@ def main(args):
         robotRMP = fcl.CollisionObject(robotBox, T)
 
         distInfo = fcl.DistanceResult()
+        distInfo2 = fcl.DistanceResult()
         request = fcl.DistanceRequest()
         fcl.distance(collision, robotRMP, request, distInfo)
+        fcl.distance(collision2, robotRMP, request, distInfo2)
 
         # set rmp root
         Root = RMPRoot("Root")
 
         # set collision point transition
         T1 = TransitionArbitraryPoint("T1", Root, distInfo.nearest_points[1][:2])
-        C1 = CollisionAvoidance("C1", T1, None, epsilon=0.01, c=distInfo.nearest_points[0][:2], R=0.100)
+        C1 = CollisionAvoidance("C1", T1, None, epsilon=0.01, c=distInfo.nearest_points[0][:2], R=0.200)
+
+        T2 = TransitionArbitraryPoint("T2", Root, distInfo2.nearest_points[1][:2])
+        C2 = CollisionAvoidance("C2", T2, None, epsilon=0.01, c=distInfo2.nearest_points[0][:2], R=0.200)
 
         (x_g, count) = getWayPoint(state[:2], count)
         leafG = GoalAttractorUni("goal_attractor", Root, x_g)
@@ -200,7 +217,9 @@ def main(args):
         plt.plot(distInfo.nearest_points[0][0], distInfo.nearest_points[0][1], "go")
         plt.plot(distInfo.nearest_points[1][0], distInfo.nearest_points[1][1], "go")
 
-        rect = plt.Rectangle((0.76, 0), 9, 16.3, fc="black", ec="black")
+        rect = plt.Rectangle((1.15, 0), 9, 16.3, fc="black", ec="black")
+        plt.gca().add_artist(rect)
+        rect = plt.Rectangle((1.15, 18.3), 9, 1, fc="black", ec="black")
         plt.gca().add_artist(rect)
         plt.draw()
         plt.pause(0.001)
@@ -208,9 +227,10 @@ def main(args):
 
 if __name__ == "__main__":
     from datetime import datetime
+
     t = datetime.now()
-    video_name = f'{t.year}{t.month}{t.day}{t.hour}{t.minute}{t.second}'
-    
+    video_name = f"{t.year}{t.month}{t.day}{t.hour}{t.minute}{t.second}"
+
     parser = argparse.ArgumentParser("Parse configuration file")
     parser.add_argument("--config", type=str, default=None)
     parser.add_argument("-m", "--model_dir", type=str, default="data/inference")
@@ -226,7 +246,7 @@ if __name__ == "__main__":
     parser.add_argument("--resume", default=False, action="store_true")
     parser.add_argument("--bag_file", type=str, default="/data/20221024_142540.bag")
     parser.add_argument("--video_output_dir", type=str, default="data/video")
-    parser.add_argument('--video_output_name', type=str, default=f'{video_name}.avi')
+    parser.add_argument("--video_output_name", type=str, default=f"{video_name}.avi")
     # camera
     parser.add_argument("--cpu", dest="use_cuda", action="store_false", default=True)
     parser.add_argument("--display", default=True, action="store_true")

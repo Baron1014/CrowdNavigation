@@ -20,29 +20,29 @@ def init(args):
     # camera setting
     video_detector, detector = robot_detection.camera_setting(args)
 
-    log_file = os.path.join(args.model_dir, 'inference.log')
+    log_file = os.path.join(args.model_dir, "inference.log")
     logger.log_setting(args, log_file)
     # configure logging and device
     level = logging.DEBUG if args.debug else logging.INFO
-    logging.basicConfig(level=level, format='%(asctime)s, %(levelname)s: %(message)s', datefmt="%Y-%m-%d %H:%M:%S")
+    logging.basicConfig(level=level, format="%(asctime)s, %(levelname)s: %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
     device = torch.device("cuda:0" if torch.cuda.is_available() and args.gpu else "cpu")
-    logging.info('Using device: %s', device)
+    logging.info("Using device: %s", device)
 
     if args.model_dir is not None:
         if args.config is not None:
             config_file = args.config
         else:
-            config_file = os.path.join(args.model_dir, 'config.py')
+            config_file = os.path.join(args.model_dir, "config.py")
 
-        model_weights = os.path.join(args.model_dir, 'best_val.pth')
-        logging.info('Loaded RL weights with best VAL')
+        model_weights = os.path.join(args.model_dir, "best_val.pth")
+        logging.info("Loaded RL weights with best VAL")
 
     else:
         config_file = args.config
 
-    spec = importlib.util.spec_from_file_location('config', config_file)
+    spec = importlib.util.spec_from_file_location("config", config_file)
     if spec is None:
-        parser.error('Config file not found.')
+        parser.error("Config file not found.")
     config = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(config)
 
@@ -54,7 +54,7 @@ def init(args):
     policy.set_device(device)
     if policy.trainable:
         if args.model_dir is None:
-            parser.error('Trainable policy must be specified with a model weights directory')
+            parser.error("Trainable policy must be specified with a model weights directory")
         policy.load_model(model_weights)
 
     # configure environment
@@ -65,10 +65,10 @@ def init(args):
 
     if args.human_num is not None:
         env_config.sim.human_num = args.human_num
-    env = gym.make('CrowdSim-v0')
+    env = gym.make("CrowdSim-v0")
     env.configure(env_config)
 
-    robot = Robot(env_config, 'robot')
+    robot = Robot(env_config, "robot")
     env.set_robot(robot)
     robot.time_step = env.time_step
     robot.set_policy(policy)
@@ -110,13 +110,13 @@ def inference(pos_x, pos_y, old_vel, robot=None, video_detector=None, detector=N
     except:
         out = video_detector.get_writer()
         out.release()
-        raise EOFError('inference error!!')
-    
+        raise EOFError("inference error!!")
+
     if old_vel is None:
         accel = action
     else:
         accel = ActionXY(action[0] - old_vel[0], action[1] - old_vel[1])
-    logging.info('Robot position: {}, Velocity: {}), Speed: {:.2f}'.format(last_pos, action, np.linalg.norm(action)))
+    # logging.info('Robot position: {}, Velocity: {}), Speed: {:.2f}'.format(last_pos, action, np.linalg.norm(action)))
 
     return action, accel, done, key
 
@@ -132,7 +132,7 @@ def main(args):
         vel, accel, done, key = inference(p_x, p_y, old_vel, robot, video_detector, detector, eg, idx_frame, env)
         old_vel = vel
 
-        #End loop once video finishes
+        # End loop once video finishes
         if key == 27:
             cv2.destroyAllWindows()
             break
@@ -141,7 +141,7 @@ def main(args):
 def compute_observation(robot_pos, position, velocity, config):
     ob = []
     for i in range(len(position)):
-        human = Human(i + 1, config, 'humans')
+        human = Human(i + 1, config, "humans")
         human_xy = [position[i][0], position[i][2]]
         if human_xy[0] is np.inf or human_xy[1] is np.inf:
             human_xy = [999, 999]
@@ -152,27 +152,28 @@ def compute_observation(robot_pos, position, velocity, config):
     return ob
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     from datetime import datetime
-    t = datetime.now()
-    video_name = f'{t.year}{t.month}{t.day}{t.hour}{t.minute}{t.second}'
 
-    parser = argparse.ArgumentParser('Parse configuration file')
-    parser.add_argument('--config', type=str, default=None)
-    parser.add_argument('-m', '--model_dir', type=str, default='data/inference')
-    parser.add_argument('--gpu', default=False, action='store_true')
-    parser.add_argument('-v', '--visualize', default=True, action='store_true')
-    parser.add_argument('--phase', type=str, default='test')
-    parser.add_argument('-c', '--test_case', type=int, default=None)
-    parser.add_argument('--video_file', type=str, default=None)
-    parser.add_argument('--video_dir', type=str, default=None)
-    parser.add_argument('--traj', default=False, action='store_true')
-    parser.add_argument('--debug', default=False, action='store_true')
-    parser.add_argument('--human_num', type=int, default=5)
-    parser.add_argument('--resume', default=False, action='store_true')
-    parser.add_argument('--bag_file', type=str, default='/data/20221024_142540.bag')
-    parser.add_argument('--video_output_dir', type=str, default='data/video')
-    parser.add_argument('--video_output_name', type=str, default=f'{video_name}.avi')
+    t = datetime.now()
+    video_name = f"{t.year}{t.month}{t.day}{t.hour}"
+
+    parser = argparse.ArgumentParser("Parse configuration file")
+    parser.add_argument("--config", type=str, default=None)
+    parser.add_argument("-m", "--model_dir", type=str, default="data/inference")
+    parser.add_argument("--gpu", default=False, action="store_true")
+    parser.add_argument("-v", "--visualize", default=True, action="store_true")
+    parser.add_argument("--phase", type=str, default="test")
+    parser.add_argument("-c", "--test_case", type=int, default=None)
+    parser.add_argument("--video_file", type=str, default=None)
+    parser.add_argument("--video_dir", type=str, default=None)
+    parser.add_argument("--traj", default=False, action="store_true")
+    parser.add_argument("--debug", default=False, action="store_true")
+    parser.add_argument("--human_num", type=int, default=5)
+    parser.add_argument("--resume", default=False, action="store_true")
+    parser.add_argument("--bag_file", type=str, default="/data/20221024_142540.bag")
+    parser.add_argument("--video_output_dir", type=str, default="data/video")
+    parser.add_argument("--video_output_name", type=str, default=f"{video_name}.avi")
     # camera
     parser.add_argument("--cpu", dest="use_cuda", action="store_false", default=True)
     parser.add_argument("--display", default=True, action="store_true")
