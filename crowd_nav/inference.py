@@ -98,6 +98,7 @@ def inference(pos_x, pos_y, old_vel, robot=None, video_detector=None, detector=N
     robot.set_position(last_pos)
     reaching_goal = np.linalg.norm(last_pos - np.array(robot.get_goal_position())) < robot.radius
     try:
+        print(f"goal dis:{last_pos} - {np.array(robot.get_goal_position())}")
         if reaching_goal:
             done = True
             action = ActionXY(0, 0)
@@ -143,8 +144,6 @@ def compute_observation(robot_pos, position, velocity, config):
     for i in range(len(position)):
         human = Human(i + 1, config, "humans")
         human_xy = [position[i][0], position[i][2]]
-        if human_xy[0] is np.inf or human_xy[1] is np.inf:
-            human_xy = [999, 999]
         pos, vel = robot_pos + human_xy, velocity[i]
         human.set(pos[0], pos[1], 0, 0, vel[0], vel[1], 0.1)
         ob.append(human.get_id_observable_state())

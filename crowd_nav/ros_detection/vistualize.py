@@ -185,7 +185,7 @@ class BasicDetector:
             self.old_coordinate = self.get_person_coordinate(person)
 
             pref_vel = np.array([0, 0])
-            if current[0] is np.inf or current[2] is np.inf:
+            if current[1] is np.inf:
                 pass
             elif self.old_coordinate is None:
                 self.set_person_coordinate(person, current)
@@ -216,12 +216,29 @@ class BasicDetector:
             center_x, center_y = box[0] + (box[2] - box[0]) // 2, box[1] + (box[3] - box[1]) // 2
             dis = self.get_center_depth_value(depth_img, center_x, center_y)
             if dis == 0:
-                camera_coordinate = [np.inf, np.inf, np.inf]
+                if self.check_inf_close(box):
+                    camera_coordinate = [0, np.inf, 1]
+                else:
+                    camera_coordinate = [0, np.inf, 8]
             else:
                 camera_coordinate = rs.rs2_deproject_pixel_to_point(intrin=depth_intrin, pixel=[center_x, center_y], depth=dis)
             coordinates.append(camera_coordinate)
 
         return coordinates
+
+    def check_inf_close(self, bbox_xyxy):
+        '''
+        0: far inf
+        1: close inf
+        '''
+        img_x, img_y = 1280, 720
+        close_x_recognize_ratio, close_y_recognize_ratio = 0.7, 0.95
+        left_x, left_y, right_x, right_y = bbox_xyxy
+        if (right_x-left_x)/img_x>close_x_recognize_ratio and (right_y-left_y)/img_y>close_y_recognize_ratio:
+            return 1
+        else:
+            return 0
+
 
 
 class VideoVis(BasicDetector):

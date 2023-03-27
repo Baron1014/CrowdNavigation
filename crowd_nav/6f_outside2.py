@@ -42,18 +42,18 @@ class CrowdAvoidanceLeaf(RMPLeaf):
             G = np.eye(2) * 0.5
             M = G
 
-            x_o = x_dot[0]
-            y_o = x_dot[1]
-            x_dot[0] = -y_o
-            x_dot[1] = x_o
+            #x_o = x_dot[0]
+            #y_o = x_dot[1]
+            #x_dot[0] = -y_o
+            #x_dot[1] = x_o
 
-            _, a, _, _ = inference(-x[1][0], x[0][0], x_dot, robot=robot, video_detector=v_detector, detector=detector, env_config=eg, idx_frame=idx_frame)
-            x_c = a[0]
-            y_c = a[1]
+            _, f, _, _ = inference(x[0][0], x[1][0], x_dot, robot=robot, video_detector=v_detector, detector=detector, env_config=eg, idx_frame=idx_frame)
+            #x_c = a[0]
+            #y_c = a[1]
 
-            f = np.array([[.0], [.0]])
-            f[0][0] = y_c
-            f[1][0] = -x_c
+            #f = np.array([[0.0], [0.0]])
+            #f[0][0] = y_c
+            #f[1][0] = -x_c
             return (f, M)
 
         RMPLeaf.__init__(self, name, parent, None, psi, J, J_dot, RMP_func)
@@ -69,25 +69,32 @@ def main(args):
     idx_frame = 0
     old_vel = None
 
-    collisionBox = fcl.Box(9.0, 16.3, 1e5)
-    collisionBox2 = fcl.Box(9.0, 1, 1e5)
-    robotBox = fcl.Box(0.8, 0.5, 1e5)
+    LeftWall = fcl.Box(1.0, 9.86, 1e5)
+    RightWall = fcl.Box(1.0, 7.65, 1e5)
+    TopWall = fcl.Box(2.98, 1.0, 1e5)
+    CollisionBox = fcl.Box(0.22, 0.1, 1e5)
 
-    T = fcl.Transform(np.array([5.65, 8.15, 0.0]))
-    collision = fcl.CollisionObject(collisionBox, T)
-    T = fcl.Transform(np.array([5.65, 18.8, 0.0]))
-    collision2 = fcl.CollisionObject(collisionBox2, T)
+    robotBox = fcl.Box(0.5, 0.8, 1e5)
+
+    T = fcl.Transform(np.array([-1.3, 3.93, 0.0]))
+    collisionLeftWall = fcl.CollisionObject(LeftWall, T)
+    T = fcl.Transform(np.array([2.5, 4.825, 0.0]))
+    collisionRightWall = fcl.CollisionObject(RightWall, T)
+    T = fcl.Transform(np.array([0.69, 9.75, 0.0]))
+    collisionTopWall = fcl.CollisionObject(TopWall, T)
+    T = fcl.Transform(np.array([1.11, 1.05, 0.0]))
+    collision = fcl.CollisionObject(CollisionBox, T)
 
     x = np.array([0.0, 0.0])
     x_dot = np.array([0.0, 0.0])
-    x_g = np.array([7.5, 17])
+    x_g = np.array([0.0, 7.5])
     # x_g = np.array([2.12, 4.619])
 
     state_0 = np.concatenate((x, x_dot), axis=None)
 
     # --------------------------------------------
     def getWayPoint(x, count):
-        wayPoint = np.array([[7.5, 17.45]])
+        wayPoint = np.array([[0.0, 7.5]])
 
         if norm(wayPoint[count] - x) < 0.20:
             count = count + 1
@@ -126,8 +133,8 @@ def main(args):
     # ----------------------------------------------
     def commandTrans(vel):
         ret = np.array([0.0, 0.0])
-        ret[1] = vel[1]
-        ret[0] = vel[0]
+        ret[1] = -vel[0]
+        ret[0] = vel[1]
 
         return ret
 
@@ -163,30 +170,38 @@ def main(args):
 
         distInfo = fcl.DistanceResult()
         distInfo2 = fcl.DistanceResult()
+        distInfo3 = fcl.DistanceResult()
+        distInfo4 = fcl.DistanceResult()
         request = fcl.DistanceRequest()
         fcl.distance(collision, robotRMP, request, distInfo)
-        fcl.distance(collision2, robotRMP, request, distInfo2)
+        fcl.distance(collisionRightWall, robotRMP, request, distInfo2)
+        fcl.distance(collisionLeftWall, robotRMP, request, distInfo3)
+        fcl.distance(collisionTopWall, robotRMP, request, distInfo4)
 
         # set rmp root
         Root = RMPRoot("Root")
 
-        # set collision point transition
+        #set collision point transition
         T1 = TransitionArbitraryPoint("T1", Root, distInfo.nearest_points[1][:2])
-        C1 = CollisionAvoidance("C1", T1, None, epsilon=0.01, c=distInfo.nearest_points[0][:2], R=0.200)
+        C1 = CollisionAvoidance("C1", T1, None, epsilon=0.01, c=distInfo.nearest_points[0][:2], R=0.300)
 
         T2 = TransitionArbitraryPoint("T2", Root, distInfo2.nearest_points[1][:2])
-        C2 = CollisionAvoidance("C2", T2, None, epsilon=0.01, c=distInfo2.nearest_points[0][:2], R=0.200)
+        C2 = CollisionAvoidance("C2", T2, None, epsilon=0.01, c=distInfo2.nearest_points[0][:2], R=0.300)
 
+        T3 = TransitionArbitraryPoint("T3", Root, distInfo3.nearest_points[1][:2])
+        C3 = CollisionAvoidance("C3", T3, None, epsilon=0.01, c=distInfo3.nearest_points[0][:2], R=0.300)
+        T4 = TransitionArbitraryPoint("T4", Root, distInfo3.nearest_points[1][:2])
+        C4 = CollisionAvoidance("C4", T4, None, epsilon=0.01, c=distInfo3.nearest_points[0][:2], R=0.300)
         (x_g, count) = getWayPoint(state[:2], count)
-        leafG = GoalAttractorUni("goal_attractor", Root, x_g)
+        #leafG = GoalAttractorUni("goal_attractor", Root, x_g)
 
         leafCrowd = CrowdAvoidanceLeaf("crowd", Root, v_detector, detector, robot, eg, i + 1)
 
         state_dot = dynamics(Root, state)
-        state[0] = state[0] + state_dot[0] * 0.1
-        state[1] = state[1] + state_dot[1] * 0.1
-        state[2] = state[2] + state_dot[2] * 0.1
-        state[3] = state[3] + state_dot[3] * 0.1
+        state[0] = state[0] + state_dot[0] * 0.05
+        state[1] = state[1] + state_dot[1] * 0.05
+        state[2] = state[2] + state_dot[2] * 0.05
+        state[3] = state[3] + state_dot[3] * 0.05
 
         end = time.time()
         if state[2] > 0.1:
@@ -209,18 +224,25 @@ def main(args):
         stateListY.append(state[1])
 
         plt.cla()
-        plt.xlim([-2, 18])
-        plt.ylim([-2, 18.2])
+        plt.xlim([-2, 4])
+        plt.ylim([-2, 10])
         plt.plot(stateListX, stateListY)
-        rect = plt.Rectangle((state[0] - 0.4, state[1] - 0.25), 0.8, 0.5, ec="k")
+        rect = plt.Rectangle((state[0] - 0.25, state[1] - 0.4), 0.5, 0.8, ec="k")
         plt.gca().add_artist(rect)
-        plt.plot(distInfo.nearest_points[0][0], distInfo.nearest_points[0][1], "go")
-        plt.plot(distInfo.nearest_points[1][0], distInfo.nearest_points[1][1], "go")
+        plt.plot(distInfo2.nearest_points[0][0], distInfo2.nearest_points[0][1], "go")
+        plt.plot(distInfo2.nearest_points[1][0], distInfo2.nearest_points[1][1], "go")
 
-        rect = plt.Rectangle((1.15, 0), 9, 16.3, fc="black", ec="black")
+        # wall
+        rect = plt.Rectangle((-1.8, -1), 1, 9.86, fc="black", ec="black")
         plt.gca().add_artist(rect)
-        rect = plt.Rectangle((1.15, 18.3), 9, 1, fc="black", ec="black")
+        rect = plt.Rectangle((2, 1), 1, 7.65, fc="black", ec="black")
         plt.gca().add_artist(rect)
+        rect = plt.Rectangle((-0.8, 9.25), 2.98, 1, fc="black", ec="black")
+        plt.gca().add_artist(rect)
+
+        rect = plt.Rectangle((1, 1), 0.22, 0.1, fc="black", ec="black")
+        plt.gca().add_artist(rect)
+        plt.gca().set_aspect("equal", "box")
         plt.draw()
         plt.pause(0.001)
 
