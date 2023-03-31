@@ -249,13 +249,15 @@ class CrowdSim(gym.Env):
        #     if np.linalg.norm([px - gx, py - gy]) >= 8:
        #         break
        
-       if self.config.robot.gx is not None and self.config.robot.gy is not None:
+       start_or_goal = self.circle_radius+1
+       pos = 1 if random.random()>0.5 else -1
+       if self.config.robot.gx and self.config.robot.gy:
             px, py = 0, 0
             gx, gy = self.config.robot.gx , self.config.robot.gy
        else:
             px, gx = 0, 0
-            py, gy = -self.circle_radius-1, self.circle_radius+1
-       self.robot.set(px, py, gx, gy, 0, 0, np.pi/2)
+            py, gy = -pos*(start_or_goal), pos*start_or_goal
+       self.robot.set(px, py, gx, gy, 0, 0, pos*np.pi/2)
         
 
     def reset(self, phase='test', test_case=None):

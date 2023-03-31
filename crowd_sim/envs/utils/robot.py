@@ -19,8 +19,8 @@ class Robot(Agent):
         state = JointState(self.get_full_state(), ob)
         if self.policy.name=='SSTGCNN_RL':
             if len(self.ego_memory['ego'])<(self.obs_len-2):
-                self.push_ego_memory(state)
-                self.push_ego_memory(state)
+                for _ in range(self.obs_len-2):
+                    self.push_ego_memory(state)
             action = self.policy.predict(state, self.ego_memory)
             self.push_ego_memory(state)
         else:

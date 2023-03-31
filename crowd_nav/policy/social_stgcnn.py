@@ -80,10 +80,11 @@ class GCN(nn.Module):
         embedding_dim = self.X_dim
         self.Ws = torch.nn.ParameterList()
         for i in range(self.num_layer):
+            obs_lens = 6
             if i == 0:
-                self.Ws.append(Parameter(torch.randn(4, self.X_dim, embedding_dim)))
+                self.Ws.append(Parameter(torch.randn(obs_lens, self.X_dim, embedding_dim)))
             elif i == self.num_layer - 1:
-                self.Ws.append(Parameter(torch.randn(4, embedding_dim, final_state_dim)))
+                self.Ws.append(Parameter(torch.randn(obs_lens, embedding_dim, final_state_dim)))
             else:
                 self.Ws.append(Parameter(torch.randn(embedding_dim, embedding_dim)))
 
@@ -264,7 +265,7 @@ class SSTGCNN_RL(MultiHumanRL):
         self.robot_state_dim = 9
         self.human_state_dim = 4
         self.norm_lap_matr = True
-        self.seq_len = 4
+        self.seq_len = 6
 
     def transform(self, state):
         """
@@ -295,9 +296,9 @@ class SSTGCNN_RL(MultiHumanRL):
         """
         # memory state
         self_states, humans_states = [], []
-        for i in [-2, -1]: # closest 2 memory
-            self_states.append(ego_memory_state['ego'][i].to(self.device))
-            humans_states.append(ego_memory_state['humans'][i].to(self.device))
+        for i in range(self.seq_len-2, 0, -1): # closest obs-2 memory
+            self_states.append(ego_memory_state['ego'][-i].to(self.device))
+            humans_states.append(ego_memory_state['humans'][-i].to(self.device))
         # current state
         self_states.append(torch.Tensor([state.robot_state.to_tuple()]).to(self.device))
         humans_states.append(torch.Tensor([human_state.to_id_tuple() for human_state in state.human_states]). \

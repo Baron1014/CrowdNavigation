@@ -47,10 +47,10 @@ class BaseEnvConfig(object):
     robot.visible = False
     robot.policy = 'none'
     robot.radius = 0.3
-    robot.obs_len = 4
+    robot.obs_len = 6
     robot.v_pref = 1
     robot.sensor = 'coordinates'
-    robot.FOV = .7
+    robot.FOV = 2
     robot.gx = None
     robot.gy = None
 
