@@ -139,7 +139,8 @@ class st_gcn(nn.Module):
                  stride=1,
                  dropout=0,
                  residual=True,
-                 wo_gcn=False):
+                 wo_gcn=False,
+                 wo_tcn=False):
         super(st_gcn,self).__init__()
         
 #         print("outstg",out_channels)
@@ -155,7 +156,7 @@ class st_gcn(nn.Module):
         else:
             self.gcn = GCN(in_channels, out_channels)
         
-
+        self.wo_tcn = wo_tcn
         self.tcn = nn.Sequential(
             nn.BatchNorm2d(out_channels),
             nn.PReLU(),
@@ -169,7 +170,9 @@ class st_gcn(nn.Module):
             nn.BatchNorm2d(out_channels),
             nn.Dropout(dropout, inplace=True),
         )
-
+        self.lstm = nn.LSTM(out_channels, out_channels, batch_first=True, dropout=dropout)
+            
+        
         if not residual:
             self.residual = lambda x: 0
 
@@ -192,8 +195,16 @@ class st_gcn(nn.Module):
 
         res = self.residual(x)
         x, A = self.gcn(x, A)
-
-        x = self.tcn(x) + res
+        if self.wo_tcn:
+            x = x.permute(3, 0, 2, 1)
+            all_v = []
+            for i in range(x.shape[0]):
+                v, _ = self.lstm(x[i, :, :, :])
+                all_v.append(v)
+            x = torch.stack(all_v)
+            x = x.permute(1, 3, 2, 0)
+        else:
+            x = self.tcn(x) + res
         
         if not self.use_mdn:
             x = self.prelu(x)
@@ -217,9 +228,13 @@ class social_stgcnn(nn.Module):
         self.without_tcn = config.without_tcn
 
         self.st_gcns = nn.ModuleList()
-        self.st_gcns.append(st_gcn(self.input_feat, self.output_feat,(self.kernel_size,self.seq_len), wo_gcn=self.without_gcn))
+        self.st_gcns.append(st_gcn(self.input_feat, self.output_feat,(self.kernel_size,self.seq_len),
+                                    wo_gcn=self.without_gcn,
+                                    wo_tcn=self.without_tcn))
         for j in range(1,self.n_stgcnn):
-            self.st_gcns.append(st_gcn(self.output_feat,self.output_feat,(self.kernel_size,self.seq_len), wo_gcn=self.without_gcn))
+            self.st_gcns.append(st_gcn(self.output_feat,self.output_feat,(self.kernel_size,self.seq_len),
+                                        wo_gcn=self.without_gcn,
+                                        wo_tcn=self.without_tcn))
         
         self.tpcnns = nn.ModuleList()
         self.tpcnns.append(nn.Conv2d(self.seq_len,self.seq_hidden,3,padding=1))
