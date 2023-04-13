@@ -66,7 +66,7 @@ def main(args):
         pocliy_config = {
             'social_stgcnn': 'configs/social_stgcnn.py',
             'dgcnrl': 'configs/dgcnrl.py',
-            'sstgcn': 'configs/sstgcn.py',
+            'rgl_lstm': 'configs/rgl_lstm.py',
             'rgl': 'configs/rgl.py',
             'sarl': 'configs/sarl.py', 
             'cadrl': 'configs/cadrl.py',
@@ -98,6 +98,10 @@ def main(args):
     policy = policy_factory[policy_config.name]()
     if not policy.trainable:
         parser.error('Policy has to be trainable')
+    # ablation study
+    policy_config.without_txpcnn = args.without_txpcnn 
+    policy_config.without_gcn = args.without_gcn 
+    policy_config.without_tcn = args.without_tcn 
     policy.configure(policy_config)
     policy.set_device(device)
 
@@ -141,15 +145,16 @@ def main(args):
     else:
         trainer = VNRLTrainer(model, memory, device, policy, batch_size, optimizer, writer)
     explorer = Explorer(env, robot, device, writer, memory, policy.gamma, target_policy=policy)
+    
 
     # imitation learning
-    # if args.resume:
-    #     if not os.path.exists(rl_weight_file):
-    #         logging.error('RL weights does not exist')
-    #     model.load_state_dict(torch.load(rl_weight_file))
-    #     rl_weight_file = os.path.join(args.output_dir, 'resumed_rl_model.pth')
-    #     logging.info('Load reinforcement learning trained weights. Resume training')
-    if os.path.exists(il_weight_file):
+    if args.resume:
+        if not os.path.exists(rl_weight_file):
+            logging.error('RL weights does not exist')
+        model.load_state_dict(torch.load(rl_weight_file, map_location=device), False)
+        rl_weight_file = os.path.join(args.output_dir, 'resumed_rl_model.pth')
+        logging.info('Load reinforcement learning trained weights. Resume training')
+    elif os.path.exists(il_weight_file):
         model.load_state_dict(torch.load(il_weight_file, map_location=device), False)
         # model.load_state_dict(torch.load(il_weight_file), False)
         logging.info('Load imitation learning trained weights.')
@@ -256,6 +261,10 @@ if __name__ == '__main__':
     parser.add_argument('--wandb', default=False, action='store_true')
     parser.add_argument('--wandb_display_name', '-wdn', type=str, default=None)
     parser.add_argument('--policy', type=str, default='social_stgcnn')
+    parser.add_argument('--without_txpcnn', default=False, action='store_true')
+    parser.add_argument('--without_gcn', default=False, action='store_true')
+    parser.add_argument('--without_tcn', default=False, action='store_true')
+
 
     sys_args = parser.parse_args()
 

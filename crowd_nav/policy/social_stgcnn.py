@@ -80,7 +80,7 @@ class GCN(nn.Module):
         embedding_dim = self.X_dim
         self.Ws = torch.nn.ParameterList()
         for i in range(self.num_layer):
-            obs_lens = 6
+            obs_lens = 4
             if i == 0:
                 self.Ws.append(Parameter(torch.randn(obs_lens, self.X_dim, embedding_dim)))
             elif i == self.num_layer - 1:
@@ -138,7 +138,8 @@ class st_gcn(nn.Module):
                  use_mdn = False,
                  stride=1,
                  dropout=0,
-                 residual=True):
+                 residual=True,
+                 wo_gcn=False):
         super(st_gcn,self).__init__()
         
 #         print("outstg",out_channels)
@@ -148,9 +149,11 @@ class st_gcn(nn.Module):
         padding = ((kernel_size[0] - 1) // 2, 0)
         self.use_mdn = use_mdn
 
-        # self.gcn = ConvTemporalGraphical(in_channels, out_channels,
-        #                                  kernel_size[1])
-        self.gcn = GCN(in_channels, out_channels)
+        if wo_gcn:
+            self.gcn = ConvTemporalGraphical(in_channels, out_channels,
+                                            kernel_size[1])
+        else:
+            self.gcn = GCN(in_channels, out_channels)
         
 
         self.tcn = nn.Sequential(
@@ -209,16 +212,25 @@ class social_stgcnn(nn.Module):
         self.seq_hidden = config.social_stgcnn.seq_hidden
         self.pred_seq_len = config.social_stgcnn.predict_seq_len
 
+        self.without_txpcnn = config.without_txpcnn
+        self.without_gcn = config.without_gcn
+        self.without_tcn = config.without_tcn
+
         self.st_gcns = nn.ModuleList()
-        self.st_gcns.append(st_gcn(self.input_feat, self.output_feat,(self.kernel_size,self.seq_len)))
+        self.st_gcns.append(st_gcn(self.input_feat, self.output_feat,(self.kernel_size,self.seq_len), wo_gcn=self.without_gcn))
         for j in range(1,self.n_stgcnn):
-            self.st_gcns.append(st_gcn(self.output_feat,self.output_feat,(self.kernel_size,self.seq_len)))
+            self.st_gcns.append(st_gcn(self.output_feat,self.output_feat,(self.kernel_size,self.seq_len), wo_gcn=self.without_gcn))
         
         self.tpcnns = nn.ModuleList()
         self.tpcnns.append(nn.Conv2d(self.seq_len,self.seq_hidden,3,padding=1))
         for j in range(1,self.n_txpcnn):
             self.tpcnns.append(nn.Conv2d(self.seq_hidden,self.seq_hidden,3,padding=1))
-        self.tpcnn_ouput = nn.Conv2d(self.seq_hidden,self.pred_seq_len,3,padding=1)
+
+        # ablation study
+        if self.without_txpcnn:
+            self.tpcnn_ouput = nn.Conv2d(self.seq_len,self.pred_seq_len,3,padding=1)
+        else:
+            self.tpcnn_ouput = nn.Conv2d(self.seq_hidden,self.pred_seq_len,3,padding=1)
             
             
         self.prelus = nn.ModuleList()
@@ -245,10 +257,10 @@ class social_stgcnn(nn.Module):
             
         v = v.view(v.shape[0],v.shape[2],v.shape[1],v.shape[3])
         
-        v = self.prelus[0](self.tpcnns[0](v))
-
-        for k in range(1,self.n_txpcnn-1):
-            v =  self.prelus[k](self.tpcnns[k](v)) + v
+        if not self.without_txpcnn:
+            v = self.prelus[0](self.tpcnns[0](v))
+            for k in range(1,self.n_txpcnn-1):
+                v =  self.prelus[k](self.tpcnns[k](v)) + v
             
         v = self.tpcnn_ouput(v)
         v = v.view(v.shape[0],v.shape[2],v.shape[1],v.shape[3])
@@ -265,7 +277,7 @@ class SSTGCNN_RL(MultiHumanRL):
         self.robot_state_dim = 9
         self.human_state_dim = 4
         self.norm_lap_matr = True
-        self.seq_len = 6
+        self.seq_len = 4
 
     def transform(self, state):
         """
@@ -285,7 +297,16 @@ class SSTGCNN_RL(MultiHumanRL):
         self.multiagent_training = config.social_stgcnn.multiagent_training
         self.model = social_stgcnn(config, self.robot_state_dim, self.human_state_dim)
         logging.info('Policy: Social-STGCN RL')
-    
+        # ablation study
+        if config.without_txpcnn:
+            logging.info('Ablation Study: w/o TXP-CNN')
+        elif config.without_gcn:
+            logging.info('Ablation Study: w/o GCN layer, use CNN layer')
+        elif config.without_tcn:
+            logging.info('Ablation Study: w/o TCN, use LSTM layer')
+        else:
+            logging.info('Normal Social-STGCN RL')    
+
     def predict(self, state, ego_memory_state):
         """
         Input state is the joint state of robot concatenated by the observable state of other agents

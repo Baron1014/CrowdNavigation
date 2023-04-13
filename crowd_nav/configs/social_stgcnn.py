@@ -19,11 +19,11 @@ class PolicyConfig(BasePolicyConfig):
         self.social_stgcnn.n_txpcnn = 1
         self.social_stgcnn.stgcn_input_feat = self.gcn.X_dim
         self.social_stgcnn.stgcn_output_feat = 32
-        self.social_stgcnn.seq_len = 6
+        self.social_stgcnn.seq_len = 4
         self.social_stgcnn.kernel_size = 3
         self.social_stgcnn.seq_hidden = 12
         self.social_stgcnn.predict_seq_len = 1
-        
+
 
 
 class TrainConfig(BaseTrainConfig):

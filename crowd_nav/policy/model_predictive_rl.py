@@ -8,7 +8,7 @@ from crowd_sim.envs.utils.action import ActionRot, ActionXY
 from crowd_sim.envs.utils.state import tensor_to_joint_state
 from crowd_sim.envs.utils.utils import point_to_segment_dist
 from crowd_nav.policy.state_predictor import StatePredictor, LinearStatePredictor
-from crowd_nav.policy.graph_model import RGL
+from crowd_nav.policy.graph_model import RGL, RGL_LSTM
 from crowd_nav.policy.value_estimator import ValueEstimator
 
 
@@ -44,6 +44,7 @@ class ModelPredictiveRL(Policy):
         self.sparse_rotation_samples = 8
         self.action_group_index = []
         self.traj = None
+        self.with_lstm = None
 
     def configure(self, config):
         self.set_common_parameters(config)
@@ -51,6 +52,8 @@ class ModelPredictiveRL(Policy):
         self.do_action_clip = config.model_predictive_rl.do_action_clip
         if hasattr(config.model_predictive_rl, 'sparse_search'):
             self.sparse_search = config.model_predictive_rl.sparse_search
+        if hasattr(config.model_predictive_rl, 'with_lstm'):
+            self.with_lstm = config.model_predictive_rl.with_lstm
         self.planning_width = config.model_predictive_rl.planning_width
         self.share_graph_model = config.model_predictive_rl.share_graph_model
         self.linear_state_predictor = config.model_predictive_rl.linear_state_predictor
@@ -60,6 +63,14 @@ class ModelPredictiveRL(Policy):
             graph_model = RGL(config, self.robot_state_dim, self.human_state_dim)
             self.value_estimator = ValueEstimator(config, graph_model)
             self.model = [graph_model, self.value_estimator.value_network]
+        elif self.with_lstm:
+                graph_model1 = RGL_LSTM(config, self.robot_state_dim, self.human_state_dim)
+                self.value_estimator = ValueEstimator(config, graph_model1)
+                graph_model2 = RGL_LSTM(config, self.robot_state_dim, self.human_state_dim)
+                self.state_predictor = StatePredictor(config, graph_model2, self.time_step)
+                self.model = [graph_model1, graph_model2, self.value_estimator.value_network,
+                              self.state_predictor.human_motion_predictor]
+                logging.info('Policy: RGL_LSTM RL')
         else:
             if self.share_graph_model:
                 graph_model = RGL(config, self.robot_state_dim, self.human_state_dim)
