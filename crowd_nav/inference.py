@@ -50,6 +50,9 @@ def init(args):
     policy_config = config.PolicyConfig(args.debug)
     policy = policy_factory[policy_config.name]()
 
+    policy_config.without_txpcnn = args.without_txpcnn 
+    policy_config.without_gcn = args.without_gcn 
+    policy_config.without_tcn = args.without_tcn 
     policy.configure(policy_config)
     policy.set_device(device)
     if policy.trainable:
@@ -173,6 +176,9 @@ if __name__ == "__main__":
     parser.add_argument("--bag_file", type=str, default="/data/20221024_142540.bag")
     parser.add_argument("--video_output_dir", type=str, default="data/video")
     parser.add_argument("--video_output_name", type=str, default=f"{video_name}.avi")
+    parser.add_argument('--without_txpcnn', default=False, action='store_true')
+    parser.add_argument('--without_gcn', default=False, action='store_true')
+    parser.add_argument('--without_tcn', default=False, action='store_true')
     # camera
     parser.add_argument("--cpu", dest="use_cuda", action="store_false", default=True)
     parser.add_argument("--display", default=True, action="store_true")

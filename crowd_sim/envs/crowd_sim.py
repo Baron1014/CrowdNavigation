@@ -704,6 +704,10 @@ class CrowdSim(gym.Env):
                                         color=robot_color,
                                         marker='o', linestyle='None', markersize=8)
             ax.add_artist(robot_start)
+            # for legend
+            robot_legend = mlines.Line2D([self.robot.get_start_position()[0]], [self.robot.get_start_position()[1]],
+                                        color=robot_color, fillstyle='none',
+                                        marker='o', linestyle='None', markersize=8)
             # add robot and its goal
             robot_positions = [state[0].position for state in self.states]
             goal = mlines.Line2D([self.robot.get_goal_position()[0]], [self.robot.get_goal_position()[1]],
@@ -713,7 +717,7 @@ class CrowdSim(gym.Env):
             # sensor_range = plt.Circle(robot_positions[0], self.robot_sensor_range, fill=False, ls='dashed')
             ax.add_artist(robot)
             ax.add_artist(goal)
-            plt.legend([robot, goal], ['Robot', 'Goal'], fontsize=14)
+            plt.legend([robot_legend, goal], ['Robot', 'Goal'], fontsize=14)
 
             # add humans and their numbers
             human_positions = [[state[1][j].position for j in range(len(self.humans))] for state in self.states]

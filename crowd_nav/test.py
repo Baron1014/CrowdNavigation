@@ -60,7 +60,10 @@ def main(args):
         policy_config.model_predictive_rl.planning_width = args.planning_width
     if args.sparse_search:
         policy_config.model_predictive_rl.sparse_search = True
-
+    
+    policy_config.without_txpcnn = args.without_txpcnn 
+    policy_config.without_gcn = args.without_gcn 
+    policy_config.without_tcn = args.without_tcn 
     policy.configure(policy_config)
     policy.set_device(device)
     if policy.trainable:
@@ -187,9 +190,12 @@ if __name__ == '__main__':
     parser.add_argument('-d', '--planning_depth', type=int, default=None)
     parser.add_argument('-w', '--planning_width', type=int, default=None)
     parser.add_argument('--sparse_search', default=False, action='store_true')
-    parser.add_argument('-fov', '--robot_fov', type=float, default=.7)
+    parser.add_argument('-fov', '--robot_fov', type=float, default=.4)
     parser.add_argument('--wandb', default=False, action='store_true')
     parser.add_argument('--wandb_display_name', '-wdn', type=str, default=None)
+    parser.add_argument('--without_txpcnn', default=False, action='store_true')
+    parser.add_argument('--without_gcn', default=False, action='store_true')
+    parser.add_argument('--without_tcn', default=False, action='store_true')
 
     sys_args = parser.parse_args()
 
