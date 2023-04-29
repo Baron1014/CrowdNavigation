@@ -625,7 +625,7 @@ class CrowdSim(gym.Env):
                 #                            marker='*', linestyle='None', markersize=15)
                 # ax.add_artist(human_goal)
                 human_start = mlines.Line2D([human.get_start_position()[0]], [human.get_start_position()[1]],
-                                            color=human_colors[i][0],
+                                            color=human_colors[0][i],
                                             marker='o', linestyle='None', markersize=13)
                 ax.add_artist(human_start)
 
@@ -642,6 +642,10 @@ class CrowdSim(gym.Env):
                                             color=robot_color,
                                             marker='o', linestyle='None', markersize=13)
             ax.add_artist(robot_start)
+            # for legend
+            robot_legend = mlines.Line2D([self.robot.get_start_position()[0]], [self.robot.get_start_position()[1]],
+                                        color=robot_color, fillstyle='none',
+                                        marker='o', linestyle='None', markersize=8)
 
             for k in range(len(self.states)):
                 if k % 4 == 0 or k == len(self.states) - 1:
@@ -655,10 +659,19 @@ class CrowdSim(gym.Env):
                 # add time annotation
                 global_time = k * self.time_step
                 if global_time % 4 == 0 or k == len(self.states) - 1:
-                    agents = humans + [robot]
-                    times = [plt.text(agents[i].center[0] - x_offset, agents[i].center[1] - y_offset,
-                                      '{:.1f}'.format(global_time),
-                                      color='black', fontsize=14) for i in range(self.human_num + 1)]
+                    if k == len(self.states) - 1:
+                        times = [plt.text(humans[i].center[0] - x_offset, humans[i].center[1] - y_offset,
+                                        '{:.1f}'.format(global_time),
+                                        color='black', fontsize=14) for i in range(self.human_num)]
+                        rg_x, rg_y = [self.robot.get_goal_position()[0]], [self.robot.get_goal_position()[1]]
+                        times.append(plt.text(rg_x[0]-3*x_offset, rg_y[0] + y_offset,
+                                        '{:.1f}'.format(global_time),
+                                        color='black', fontsize=14))
+                    else:
+                        agents = humans + [robot]
+                        times = [plt.text(agents[i].center[0] - x_offset, agents[i].center[1] - y_offset,
+                                        '{:.1f}'.format(global_time),
+                                        color='black', fontsize=14) for i in range(self.human_num + 1)]
                     for time in times:
                        ax.add_artist(time)
                 if k != 0:
@@ -672,7 +685,7 @@ class CrowdSim(gym.Env):
                     ax.add_artist(nav_direction)
                     for human_direction in human_directions:
                         ax.add_artist(human_direction)
-            plt.legend([robot], ['Robot'], fontsize=16)
+            plt.legend([robot_legend], ['Robot'], fontsize=16)
             if output_file:
                 plt.savefig(output_file + ".png", dpi=600)
             else:
