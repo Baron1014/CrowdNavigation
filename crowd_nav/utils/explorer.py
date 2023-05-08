@@ -35,6 +35,7 @@ class Explorer(object):
         average_returns = []
         collision_cases = []
         timeout_cases = []
+        smooth_rates = []
 
         if k != 1:
             pbar = tqdm(total=k)
@@ -61,6 +62,7 @@ class Explorer(object):
             if isinstance(info, ReachGoal):
                 success += 1
                 success_times.append(self.env.global_time)
+                smooth_rates.append(self.env.get_smooth_score())
             elif isinstance(info, Collision):
                 collision += 1
                 collision_cases.append(i)
@@ -106,14 +108,16 @@ class Explorer(object):
             total_time = sum(success_times + collision_times + timeout_times)
             self.freq_in_danger = discomfort / total_time
             self.min_seperate = average(min_dist)
+            self.smooth_avg_dist = smooth_rates / success
             logging.info('Frequency of being in danger: %.2f and average min separate distance in danger: %.2f',
                          self.freq_in_danger, self.min_seperate)
+            logging.info('Smooth average distance is {%.2f}', self.smooth_avg_dist)
             
         if print_failure:
             logging.info('Collision cases: ' + ' '.join([str(x) for x in collision_cases]))
             logging.info('Timeout cases: ' + ' '.join([str(x) for x in timeout_cases]))
 
-        self.statistics = success_rate, collision_rate, avg_nav_time, average(cumulative_rewards), average(average_returns)
+        self.statistics = success_rate, collision_rate, avg_nav_time, average(cumulative_rewards), average(average_returns), self.smooth_avg_dist
 
         return self.statistics
 
@@ -200,6 +204,8 @@ class Explorer(object):
         if 'test' in tag_prefix or 'val' in tag_prefix:
             self.writer.log({tag_prefix + '/frequency_in_danger':self.freq_in_danger}, step=global_step)
             self.writer.log({tag_prefix + '/avg_min_separate_dist':self.min_seperate}, step=global_step)
+            self.writer.log({tag_prefix + '/smooth_avg_dist':self.smooth_avg_dist}, step=global_step)
+            self.writer.log({tag_prefix + '/avg_return': avg_return}, step=global_step)
 
     
 

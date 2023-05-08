@@ -301,6 +301,7 @@ class CrowdSim(gym.Env):
         self.states = list()
         self.robot_actions = list()
         self.rewards = list()
+        self.smooth_res = list()
         if hasattr(self.robot.policy, 'action_values'):
             self.action_values = list()
         if hasattr(self.robot.policy, 'get_attention_weights'):
@@ -494,6 +495,7 @@ class CrowdSim(gym.Env):
                                 [human.id for human in self.humans]])
             self.robot_actions.append(action)
             self.rewards.append(reward)
+            self.smooth_res.append(abs(self.robot.px))
 
             # compute the observation
             if self.robot.sensor == 'coordinates':
@@ -507,6 +509,9 @@ class CrowdSim(gym.Env):
                 raise NotImplementedError
 
         return ob, reward, done, info
+    
+    def get_smooth_score(self):
+        return sum(self.smooth_res)/len(self.smooth_res)
     
     def update_human_goal(self, human):
         while True:

@@ -138,7 +138,8 @@ def main(args):
         gamma = 0.9
         cumulative_reward = sum([pow(gamma, t * robot.time_step * robot.v_pref)
              * reward for t, reward in enumerate(rewards)])
-
+        if str(info) == 'Reaching goal':
+            print('smooth score: ', env.get_smooth_score())
         if args.traj:
             env.render('traj', args.video_file)
         else:
