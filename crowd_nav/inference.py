@@ -87,7 +87,7 @@ def init(args):
     return video_detector, detector, robot, env_config, env
 
 
-def inference(pos_x, pos_y, old_vel, robot=None, video_detector=None, detector=None, env_config=None, idx_frame=0, env=None):
+def inference(pos_x, pos_y, old_vel, robot=None, video_detector=None, detector=None, env_config=None, idx_frame=0, env=None, back=False):
     done = False
     start = time.time()
     if pos_x is None and pos_y is None:
@@ -96,6 +96,8 @@ def inference(pos_x, pos_y, old_vel, robot=None, video_detector=None, detector=N
         last_pos = np.array([pos_x, pos_y])
 
     robot.set_position(last_pos)
+    if back:
+        robot.set_back_theta()
     reaching_goal = np.linalg.norm(last_pos - np.array(robot.get_goal_position())) < robot.radius
     try:
         print(f"goal dis:{last_pos} - {np.array(robot.get_goal_position())}")
@@ -117,7 +119,7 @@ def inference(pos_x, pos_y, old_vel, robot=None, video_detector=None, detector=N
         accel = action
     else:
         accel = ActionXY(action[0] - old_vel[0], action[1] - old_vel[1])
-    # logging.info('Robot position: {}, Velocity: {}), Speed: {:.2f}'.format(last_pos, action, np.linalg.norm(action)))
+    # logging.info('Robot position: {}, Velocity: {}), Speed: {:.2f}, FPS: {}'.format(last_pos, action, np.linalg.norm(action), 1/(time.time()-start)))
 
     return action, accel, done, key
 

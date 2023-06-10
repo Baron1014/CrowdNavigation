@@ -229,13 +229,16 @@ class CrowdSim(gym.Env):
        #     if np.linalg.norm([px - gx, py - gy]) >= 8:
        #         break
        
+       start_or_goal = self.circle_radius+1
+       #pos = 1 if random.random()>0.5 else -1
+       pos = 1
        if self.config.robot.gx and self.config.robot.gy:
             px, py = 0, 0
             gx, gy = self.config.robot.gx , self.config.robot.gy
        else:
             px, gx = 0, 0
-            py, gy = -self.circle_radius-1, self.circle_radius+1
-       self.robot.set(px, py, gx, gy, 0, 0, np.pi/2)
+            py, gy = -pos*(start_or_goal), pos*start_or_goal
+       self.robot.set(px, py, gx, gy, 0, 0, pos*np.pi/2)
         
 
     def reset(self, phase='test', test_case=None):
@@ -608,11 +611,11 @@ class CrowdSim(gym.Env):
             # human_colors = [cmap(i) for i in range(len(self.humans))]
             # disable showing FoV
             human_colors = []
-            for state in self.states:
+            for i, state in enumerate(self.states):
                 colors = []
                 for h in range(len(self.humans)):
                     # green: visible; red: invisible
-                    colors.append('#A6FFA6' if self.detect_visible(state[0], state[1][h]) else '#FF7575')
+                    colors.append((30/255, 148/255, 0, 1-0.01*(len(self.states)-i)) if self.detect_visible(state[0], state[1][h]) else (255/255, 71/255, 71/255, 1-0.01*(len(self.states)-i)))
                 human_colors.append(colors)
 
             for i in range(len(self.humans)):
@@ -622,7 +625,7 @@ class CrowdSim(gym.Env):
                 #                            marker='*', linestyle='None', markersize=15)
                 # ax.add_artist(human_goal)
                 human_start = mlines.Line2D([human.get_start_position()[0]], [human.get_start_position()[1]],
-                                            color=human_colors[i][0],
+                                            color=human_colors[0][i],
                                             marker='o', linestyle='None', markersize=13)
                 ax.add_artist(human_start)
 
@@ -639,6 +642,10 @@ class CrowdSim(gym.Env):
                                             color=robot_color,
                                             marker='o', linestyle='None', markersize=13)
             ax.add_artist(robot_start)
+            # for legend
+            robot_legend = mlines.Line2D([self.robot.get_start_position()[0]], [self.robot.get_start_position()[1]],
+                                        color=robot_color, fillstyle='none',
+                                        marker='o', linestyle='None', markersize=8)
 
             for k in range(len(self.states)):
                 if k % 4 == 0 or k == len(self.states) - 1:
@@ -652,10 +659,19 @@ class CrowdSim(gym.Env):
                 # add time annotation
                 global_time = k * self.time_step
                 if global_time % 4 == 0 or k == len(self.states) - 1:
-                    agents = humans + [robot]
-                    times = [plt.text(agents[i].center[0] - x_offset, agents[i].center[1] - y_offset,
-                                      '{:.1f}'.format(global_time),
-                                      color='black', fontsize=14) for i in range(self.human_num + 1)]
+                    if k == len(self.states) - 1:
+                        times = [plt.text(humans[i].center[0] - x_offset, humans[i].center[1] - y_offset,
+                                        '{:.1f}'.format(global_time),
+                                        color='black', fontsize=14) for i in range(self.human_num)]
+                        rg_x, rg_y = [self.robot.get_goal_position()[0]], [self.robot.get_goal_position()[1]]
+                        times.append(plt.text(rg_x[0]-3*x_offset, rg_y[0] + y_offset,
+                                        '{:.1f}'.format(global_time),
+                                        color='black', fontsize=14))
+                    else:
+                        agents = humans + [robot]
+                        times = [plt.text(agents[i].center[0] - x_offset, agents[i].center[1] - y_offset,
+                                        '{:.1f}'.format(global_time),
+                                        color='black', fontsize=14) for i in range(self.human_num + 1)]
                     for time in times:
                        ax.add_artist(time)
                 if k != 0:
@@ -669,7 +685,7 @@ class CrowdSim(gym.Env):
                     ax.add_artist(nav_direction)
                     for human_direction in human_directions:
                         ax.add_artist(human_direction)
-            plt.legend([robot], ['Robot'], fontsize=16)
+            plt.legend([robot_legend], ['Robot'], fontsize=16)
             if output_file:
                 plt.savefig(output_file + ".png", dpi=600)
             else:
@@ -701,6 +717,10 @@ class CrowdSim(gym.Env):
                                         color=robot_color,
                                         marker='o', linestyle='None', markersize=8)
             ax.add_artist(robot_start)
+            # for legend
+            robot_legend = mlines.Line2D([self.robot.get_start_position()[0]], [self.robot.get_start_position()[1]],
+                                        color=robot_color, fillstyle='none',
+                                        marker='o', linestyle='None', markersize=8)
             # add robot and its goal
             robot_positions = [state[0].position for state in self.states]
             goal = mlines.Line2D([self.robot.get_goal_position()[0]], [self.robot.get_goal_position()[1]],
@@ -710,7 +730,7 @@ class CrowdSim(gym.Env):
             # sensor_range = plt.Circle(robot_positions[0], self.robot_sensor_range, fill=False, ls='dashed')
             ax.add_artist(robot)
             ax.add_artist(goal)
-            plt.legend([robot, goal], ['Robot', 'Goal'], fontsize=14)
+            plt.legend([robot_legend, goal], ['Robot', 'Goal'], fontsize=14)
 
             # add humans and their numbers
             human_positions = [[state[1][j].position for j in range(len(self.humans))] for state in self.states]

@@ -94,6 +94,9 @@ class Agent(object):
     def set_position(self, position):
         self.px = position[0]
         self.py = position[1]
+    
+    def set_back_theta(self):
+        self.theta = -1 * self.theta
 
     def get_goal_position(self):
         return self.gx, self.gy
