@@ -1,4 +1,4 @@
-# Social-STGCNNRL
+# Social-STGCNRL
 **[`Paper`](https://ieeexplore.ieee.org/xpl/conhome/1802664/all-proceedings) | [`Video`](https://www.youtube.com/watch?v=zeqPHfoYtOI)**
 
 ## Abstract
