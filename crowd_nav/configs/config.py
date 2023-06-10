@@ -51,6 +51,8 @@ class BaseEnvConfig(object):
     robot.v_pref = 1
     robot.sensor = 'coordinates'
     robot.FOV = .7
+    robot.gx = 1
+    robot.gy = -3
 
     def __init__(self, debug=False):
         if debug:
