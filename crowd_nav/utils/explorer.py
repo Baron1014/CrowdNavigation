@@ -4,6 +4,7 @@ import copy
 import torch
 from tqdm import tqdm
 from crowd_sim.envs.utils.info import *
+from numpy.linalg import norm
 
 
 class Explorer(object):
@@ -35,6 +36,7 @@ class Explorer(object):
         average_returns = []
         collision_cases = []
         timeout_cases = []
+        success_dists = []
 
         if k != 1:
             pbar = tqdm(total=k)
@@ -61,6 +63,11 @@ class Explorer(object):
             if isinstance(info, ReachGoal):
                 success += 1
                 success_times.append(self.env.global_time)
+                dists = []
+                for v in actions:
+                    dists.append(-norm(v) if v[1]<0 else norm(v))
+                success_dists.append(sum(dists)*self.robot.time_step)
+
             elif isinstance(info, Collision):
                 collision += 1
                 collision_cases.append(i)
@@ -106,8 +113,10 @@ class Explorer(object):
             total_time = sum(success_times + collision_times + timeout_times)
             self.freq_in_danger = discomfort / total_time
             self.min_seperate = average(min_dist)
+            self.avg_dist = average(success_dists)
             logging.info('Frequency of being in danger: %.2f and average min separate distance in danger: %.2f',
                          self.freq_in_danger, self.min_seperate)
+            logging.info('Average moving distance: %.4f', self.avg_dist)
             
         if print_failure:
             logging.info('Collision cases: ' + ' '.join([str(x) for x in collision_cases]))

@@ -187,7 +187,7 @@ if __name__ == '__main__':
     parser.add_argument('-d', '--planning_depth', type=int, default=None)
     parser.add_argument('-w', '--planning_width', type=int, default=None)
     parser.add_argument('--sparse_search', default=False, action='store_true')
-    parser.add_argument('-fov', '--robot_fov', type=float, default=None)
+    parser.add_argument('-fov', '--robot_fov', type=float, default=.7)
     parser.add_argument('--wandb', default=False, action='store_true')
     parser.add_argument('--wandb_display_name', '-wdn', type=str, default=None)
 
