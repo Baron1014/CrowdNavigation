@@ -15,9 +15,12 @@ TBD.
 
 ## References
 Part of the code is based on the following repositories:
+
 [1] C. Chen, Y. Liu, S. Kreiss, and A. Alahi, “Crowd-robot interaction: Crowd-aware robot navigation with attention-based deep reinforcement learning,” in International Conference on Robotics and Automation (ICRA), 2019, pp. 6015–6022.
 (Github: https://github.com/vita-epfl/CrowdNav)
+
 [2] Liu, Shuijing, et al. "Decentralized structural-rnn for robot crowd navigation with deep reinforcement learning." 2021 IEEE International Conference on Robotics and Automation (ICRA). IEEE, 2021.
 (Github: https://github.com/Shuijing725/CrowdNav_DSRNN/)
+
 [3] Mohamed, Abduallah, et al. "Social-stgcnn: A social spatio-temporal graph convolutional neural network for human trajectory prediction." Proceedings of the IEEE/CVF conference on computer vision and pattern recognition. 2020.
 (Github: https://github.com/abduallahmohamed/Social-STGCNN)
