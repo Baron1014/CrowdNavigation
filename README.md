@@ -8,14 +8,7 @@ Safety and effectiveness play a vital role in the crowd-aware navigation of robo
 <img src="https://i.imgur.com/TZFGyAF.jpg" width="1000" />
 
 ## Citation
-If you find the codes or paper useful for your research, please cite our paper:
+If you find the codes or paper useful for your research, please cite these paper:
 ```bibtex
-@inproceedings{chen2019crowd,
-  title={Crowd-robot interaction: Crowd-aware robot navigation with attention-based deep reinforcement learning},
-  author={Chen, Changan and Liu, Yuejiang and Kreiss, Sven and Alahi, Alexandre},
-  booktitle={2019 International Conference on Robotics and Automation (ICRA)},
-  pages={6015--6022},
-  year={2019},
-  organization={IEEE}
-}
+TBD.
 ```
