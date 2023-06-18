@@ -8,7 +8,7 @@ Safety and effectiveness play a vital role in the crowd-aware navigation of robo
 <img src="https://i.imgur.com/TZFGyAF.jpg" width="1000" />
 
 ## Citation
-If you find the codes or paper useful for your research, please cite these paper:
+If you find the codes or paper useful for your research, please cite our paper:
 ```bibtex
 TBD.
 ```
@@ -24,3 +24,6 @@ Part of the code is based on the following repositories:
 
 [3] Mohamed, Abduallah, et al. "Social-stgcnn: A social spatio-temporal graph convolutional neural network for human trajectory prediction." Proceedings of the IEEE/CVF conference on computer vision and pattern recognition. 2020.
 (Github: https://github.com/abduallahmohamed/Social-STGCNN)
+
+[4] Wojke, Nicolai, Alex Bewley, and Dietrich Paulus. "Simple online and realtime tracking with a deep association metric." 2017 IEEE international conference on image processing (ICIP). IEEE, 2017.
+(Github: https://github.com/nwojke/deep_sort)
