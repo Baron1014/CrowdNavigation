@@ -1,6 +1,5 @@
 # Social-STGCNRL
-**[`Paper`](https://ieeexplore.ieee.org/xpl/conhome/1802664/all-proceedings) | [`Video`](https://youtu.be/l1tSzOhCO0o)**
-
+**[`Paper`](https://ieeexplore.ieee.org/document/10268571) | [`Video`](https://youtu.be/l1tSzOhCO0o)**
 ## Abstract
 Safety and effectiveness play a vital role in the crowd-aware navigation of robots. Previous research in this area has predominantly relied on an omniscient approach to design the environment, resulting in exceptional obstacle avoidance performance. However, this approach neglects the constraints imposed by the limited field of view in real-world applications. Moreover, constructing a robot with a complete field of view can be excessively costly. In light of these challenges, this paper introduces a novel approach that combines a social spatial-temporal graph convolutional neural network (Social- STGCN) with reinforcement learning (RL) to enhance crowd avoidance navigation, offering a more practical and cost-effective solution. The simulations demonstrate the effectiveness of our proposed method, as it achieves higher success rates and lower collision rates compared to existing approaches. This confirms that our algorithm is an efficient and safer solution for crowd avoidance navigation.
 
@@ -10,7 +9,17 @@ Safety and effectiveness play a vital role in the crowd-aware navigation of robo
 ## Citation
 If you find the codes or paper useful for your research, please cite our paper:
 ```bibtex
-TBD.
+
+@INPROCEEDINGS{10268571,
+  author={Wang, Shih-Hao and Wu, Yu-Hsiung and Li, Tzuu-Hseng S.},
+  booktitle={2023 International Conference on Advanced Robotics and Intelligent Systems (ARIS)}, 
+  title={Deep Reinforcement Learning with Pedestrian Trajectory Prediction Model for Service Robot Navigation in Crowded Environments}, 
+  year={2023},
+  volume={},
+  number={},
+  pages={1-6},
+  doi={10.1109/ARIS59192.2023.10268571}}
+
 ```
 
 ## References
